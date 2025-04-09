@@ -48,9 +48,9 @@ class RecordsTableModel(QAbstractTableModel):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, db_manager, parent=None):
+    def __init__(self, test_model, parent=None):
         super().__init__(parent)
-        self.db = db_manager
+        self.test_model = test_model
         self.setWindowTitle("Database Manager")
         self.setGeometry(100, 100, 800, 600)
         self.current_selected_id = None  # To keep track of selected record for update
@@ -121,7 +121,7 @@ class MainWindow(QMainWindow):
 
     def _load_data(self):
         """Load data from database and display in table"""
-        records = self.db.get_records()
+        records = self.test_model.get_records()
         if records:
             headers = list(records[0].keys())
             data = [list(record.values()) for record in records]
@@ -178,7 +178,7 @@ class MainWindow(QMainWindow):
         try:
             name, description = self._validate_fields()
 
-            record_id = self.db.create_record(name, description)
+            record_id = self.test_model.create_record(name, description)
             if record_id:
                 QMessageBox.information(self, "Success", "Record added successfully!")
                 self._clear_form()
@@ -199,7 +199,9 @@ class MainWindow(QMainWindow):
         try:
             name, description = self._validate_fields()
 
-            success = self.db.update_record(self.current_selected_id, name, description)
+            success = self.test_model.update_record(
+                self.current_selected_id, name, description
+            )
             if success:
                 QMessageBox.information(self, "Success", "Record updated successfully!")
                 self._clear_form()
@@ -226,7 +228,7 @@ class MainWindow(QMainWindow):
 
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                success = self.db.delete_record(self.current_selected_id)
+                success = self.test_model.delete_record(self.current_selected_id)
                 if success:
                     QMessageBox.information(
                         self, "Success", "Record deleted successfully!"

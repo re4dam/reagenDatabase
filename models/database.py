@@ -1,54 +1,36 @@
 import sqlite3
 from typing import Optional, List, Dict, Any
+from contextlib import contextmanager
 
 
 class DatabaseManager:
     def __init__(self, database_path: str):
-        self.connection = sqlite3.connect(database_path)
-        self.cursor = self.connection.cursor()
-        self._initialize_tables()
+        self.database_path = database_path
 
-    def _initialize_tables(self):
-        """initialize database tables if they don't exist"""
-        self.cursor.execute(
-            """ CREATE TABLE IF NOT EXISTS records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) """
-        )
-        self.connection.commit()
+    @contextmanager
+    def _get_connection(self):
+        """Context manager for database connections"""
+        conn = sqlite3.connect(self.database_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
 
-    def create_record(self, name: str, description: str = ""):
-        """create a new record and return its ID"""
-        self.cursor.execute(
-            "INSERT INTO records (name, description) VALUES (?, ?)", (name, description)
-        )
-        self.connection.commit()
-        return self.cursor.lastrowid
+    def execute(self, query: str, params: tuple = (), fetch_all: bool = True):
+        """Generic method to execute queries"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
 
-    def get_records(self) -> List[Dict[str, Any]]:
-        """Get all records from the database"""
-        self.cursor.execute("SELECT * FROM records")
-        columns = [column[0] for column in self.cursor.description]
-        return [dict(zip(columns, row)) for row in self.cursor.fetchall()]
-
-    def update_record(self, record_id: int, name: str, description: str = "") -> bool:
-        # Update record by ID
-        self.cursor.execute(
-            "UPDATE records SET name = ?, description = ? WHERE id = ?",
-            (name, description, record_id),
-        )
-        self.connection.commit()
-        return self.cursor.rowcount > 0
-
-    def delete_record(self, record_id: int) -> bool:
-        """Delete a record by ID"""
-        self.cursor.execute("DELETE FROM records WHERE id = ?", (record_id,))
-        self.connection.commit()
-        return self.cursor.rowcount > 0
-
-    def __del__(self):
-        """Clean up when the object is destroyed"""
-        self.connection.close()
+            if cursor.description:  # if it's a SELECT query
+                if fetch_all:
+                    results = [dict(row) for row in cursor.fetchall()]
+                    return results if results else []
+                result = cursor.fetchone()
+                return dict(result) if result else None
+            return cursor.rowcount  # For INSERT/UPDATE/DELETE
