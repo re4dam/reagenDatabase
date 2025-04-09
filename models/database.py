@@ -34,7 +34,7 @@ class DatabaseManager:
         columns = [column[0] for column in self.cursor.description]
         return [dict(zip(columns, row)) for row in self.cursor.fetchall()]
 
-    def update_records(self, record_id: int, name: str, description: str = "") -> bool:
+    def update_record(self, record_id: int, name: str, description: str = "") -> bool:
         # Update record by ID
         self.cursor.execute(
             "UPDATE records SET name = ?, description = ? WHERE id = ?",
@@ -43,7 +43,7 @@ class DatabaseManager:
         self.connection.commit()
         return self.cursor.rowcount > 0
 
-    def delete_records(self, record_id: int) -> bool:
+    def delete_record(self, record_id: int) -> bool:
         """Delete a record by ID"""
         self.cursor.execute("DELETE FROM records WHERE id = ?", (record_id,))
         self.connection.commit()
