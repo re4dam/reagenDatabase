@@ -1,22 +1,23 @@
 import sys
 from PyQt6.QtWidgets import QApplication
-from models import user_model
+from models.record_model import RecordModel
 from models.user_model import UserModel
-from views.main_window import MainWindow
 from models.database import DatabaseManager
-from views.user_window import UserManagementWindow
+from views.home_window import HomeWindow
 
 
 def main():
     app = QApplication(sys.argv)
 
-    # initialize database
+    # Initialize database
     db = DatabaseManager("my_database.db")
     user_model = UserModel(db)
+    record_model = RecordModel(db)
 
-    # initialize main window
-    window = UserManagementWindow(user_model)
-    window.show()
+    # Initialize home window
+    home_window = HomeWindow()
+    home_window.setup_models(record_model, user_model)
+    home_window.show()
 
     sys.exit(app.exec())
 

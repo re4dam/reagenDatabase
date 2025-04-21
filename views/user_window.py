@@ -104,6 +104,15 @@ class UserManagementWindow(QMainWindow):
         self.toggle_active_button.setEnabled(False)
         button_layout.addWidget(self.toggle_active_button)
 
+        # In the UserManagementWindow class in user_window.py, add this to the _setup_ui method:
+        # Add this to the button_layout
+
+        self.back_button = QPushButton("Back to Home")
+        self.back_button.clicked.connect(
+            self.close
+        )  # Closing will return to home window
+        button_layout.addWidget(self.back_button)
+
         # Table
         self.users_table = QTableView()
         self.users_table.horizontalHeader().setSectionResizeMode(
@@ -116,6 +125,11 @@ class UserManagementWindow(QMainWindow):
         main_layout.addWidget(button_widget)
         main_layout.addWidget(self.users_table)
 
+    # And add this method to the UserManagementWindow class:
+    def closeEvent(self, event):
+        # This will be overridden by the home window to show itself again
+        event.accept()
+
     def _load_users(self):
         users = self.user_model.get_all_active()
         if users:
@@ -125,8 +139,8 @@ class UserManagementWindow(QMainWindow):
                 [
                     user["id"],
                     user["username"],
-                    user["password_hash"],
                     user["email"],
+                    user["password_hash"],
                     "Active" if user["is_active"] else "Inactive",
                 ]
                 for user in users
