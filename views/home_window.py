@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QLabel,
     QHBoxLayout,
+    QMessageBox,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -22,6 +23,7 @@ class HomeWindow(QMainWindow):
         self.user_window = None
         self.record_model = None
         self.user_model = None
+        self.login_window = None  # Reference to the login window
         self.rack_windows = [None, None, None, None]  # Initialize rack windows list
 
         self._setup_ui()
@@ -30,6 +32,10 @@ class HomeWindow(QMainWindow):
         """Store the models for use when opening windows"""
         self.record_model = record_model
         self.user_model = user_model
+
+    def set_login_window(self, login_window):
+        """Store a reference to the login window for logout functionality"""
+        self.login_window = login_window
 
     def _setup_ui(self):
         """Set up the UI components for the home page"""
@@ -130,12 +136,30 @@ class HomeWindow(QMainWindow):
         main_layout.addLayout(rack_layout)
         main_layout.addSpacing(40)
 
+        # Bottom buttons container
+        bottom_buttons_layout = QHBoxLayout()
+        bottom_buttons_layout.setSpacing(20)
+        bottom_buttons_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Logout button
+        self.logout_button = QPushButton("Logout")
+        self.logout_button.setMinimumHeight(40)
+        self.logout_button.setMinimumWidth(100)
+        self.logout_button.setStyleSheet(
+            "QPushButton { background-color: #ffeecc; border: 2px solid #eeddaa; border-radius: 5px; }"
+            "QPushButton:hover { background-color: #ffddaa; }"
+        )
+        self.logout_button.clicked.connect(self._logout)
+        bottom_buttons_layout.addWidget(self.logout_button)
+
         # Exit button
         self.exit_button = QPushButton("Exit")
         self.exit_button.setMinimumHeight(40)
         self.exit_button.setMinimumWidth(100)
         self.exit_button.clicked.connect(self.close)
-        main_layout.addWidget(self.exit_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        bottom_buttons_layout.addWidget(self.exit_button)
+
+        main_layout.addLayout(bottom_buttons_layout)
 
     def _open_record_manager(self):
         """Open the database manager window"""
@@ -197,6 +221,53 @@ class HomeWindow(QMainWindow):
                 "Coming Soon",
                 f"Rack {chr(65 + rack_index)} management window is not yet implemented.",
             )
+
+    def _logout(self):
+        """Logout the current user and return to login window"""
+        reply = QMessageBox.question(
+            self,
+            "Confirm Logout",
+            "Are you sure you want to logout?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            if self.login_window:
+                # Clear any sensitive data from the login form
+                self.login_window.username_input.clear()
+                self.login_window.password_input.clear()
+
+                # Show the login window
+                self.login_window.show()
+
+                # Close all child windows
+                self._close_all_child_windows()
+
+                # Close this window
+                self.close()
+            else:
+                # If login window reference is not available, create a new one
+                from views.login_window import LoginWindow
+
+                login_window = LoginWindow(self.user_model)
+                if hasattr(self, "record_model") and self.record_model:
+                    login_window.setup_models(self.record_model, self.user_model)
+
+                login_window.show()
+                self.close()
+
+    def _close_all_child_windows(self):
+        """Close all child windows"""
+        if self.record_window and self.record_window.isVisible():
+            self.record_window.close()
+
+        if self.user_window and self.user_window.isVisible():
+            self.user_window.close()
+
+        for rack_window in self.rack_windows:
+            if rack_window and rack_window.isVisible():
+                rack_window.close()
 
     def _on_window_close(self, event, window):
         """Handle when a child window is closed"""

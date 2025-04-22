@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
 
 
 class RegisterWindow(QMainWindow):
-    def __init__(self, user_model=None, parent=None):
+    def __init__(self, user_model, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Register")
         self.setGeometry(100, 100, 400, 250)
@@ -57,25 +57,50 @@ class RegisterWindow(QMainWindow):
             QMessageBox.warning(self, "Input Error", "All fields are required.")
             return
 
-        password_hash = f"hashed_{password}"
+        # Perform simple validation
+        if "@" not in email or "." not in email:
+            QMessageBox.warning(
+                self, "Input Error", "Please enter a valid email address."
+            )
+            return
 
-        # Since we don't have a database, we'll use the parent's add_user method
-        parent = self.parent()
-        if parent and hasattr(parent, "add_user"):
-            success = parent.add_user(username, email, password_hash)
-            if success:
+        if len(password) < 6:
+            QMessageBox.warning(
+                self, "Input Error", "Password must be at least 6 characters long."
+            )
+            return
+
+        password_hash = (
+            f"hashed_{password}"  # In production, use a proper hashing algorithm
+        )
+
+        try:
+            # Check if username already exists
+            existing_user = self.user_model.get_by_username(username)
+            if existing_user:
+                QMessageBox.warning(
+                    self, "Registration Error", "Username already exists."
+                )
+                return
+
+            # Use UserModel to create the new user
+            user_id = self.user_model.create(username, email, password_hash)
+
+            if user_id:
                 QMessageBox.information(
                     self, "Success", "Registration complete. You can now log in."
                 )
                 self._go_back()
             else:
-                QMessageBox.critical(self, "Error", "Username already exists.")
-        else:
-            # If parent doesn't have add_user, show success anyway for testing
-            QMessageBox.information(
-                self, "Success", "Registration complete (placeholder mode)."
+                QMessageBox.critical(
+                    self, "Error", "Registration failed. Please try again."
+                )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Database Error",
+                f"Error creating user: {str(e)}\n\nMake sure database connection is configured properly.",
             )
-            self._go_back()
 
     def _go_back(self):
         """Return to login window"""
