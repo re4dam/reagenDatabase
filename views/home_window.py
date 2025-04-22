@@ -1,59 +1,51 @@
-# views/home_window.py
+# views/home_widget.py
 from PyQt6.QtWidgets import (
     QFrame,
     QGridLayout,
-    QMainWindow,
     QWidget,
     QVBoxLayout,
     QPushButton,
     QLabel,
     QHBoxLayout,
     QMessageBox,
-    QStackedWidget,  # Add this import
+    QStackedWidget,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from views.record_window import RecordWidget  # Import widgets instead of windows
-from views.user_window import UserWidget  # Import widgets instead of windows
+from views.record_window import RecordWidget
+from views.user_window import UserWidget
 
 
-class HomeWindow(QMainWindow):
-    def __init__(self, parent=None):
+class HomeWidget(QWidget):
+    def __init__(self, record_model, user_model, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Sistem Manajemen Reagen")
-        self.setGeometry(200, 200, 600, 400)
-        self.record_model = None
-        self.user_model = None
-        self.login_window = None  # Reference to the login window
+        self.record_model = record_model
+        self.user_model = user_model
+        self.parent_window = parent  # Reference to the parent window (LoginWindow)
         self.rack_widgets = [None, None, None, None]  # Initialize rack widgets list
 
-        # Create a stacked widget to manage different views
-        self.stacked_widget = QStackedWidget()
-        self.setCentralWidget(self.stacked_widget)
+        # Create a stacked widget to manage different views within the home widget
+        self.stacked_widget = QStackedWidget(self)
 
-        # Create the home widget
-        self.home_widget = QWidget()
-        self._setup_home_ui()
+        # Create the main home view widget
+        self.main_view = QWidget()
+        self._setup_main_ui()
 
-        # Add home widget to stacked widget
-        self.stacked_widget.addWidget(self.home_widget)
+        # Add main view to stacked widget
+        self.stacked_widget.addWidget(self.main_view)
 
         # Initialize other widgets as None
         self.record_widget = None
         self.user_widget = None
 
-    def setup_models(self, record_model, user_model):
-        """Store the models for use when opening widgets"""
-        self.record_model = record_model
-        self.user_model = user_model
+        # Set up the main layout for HomeWidget
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(self.stacked_widget)
 
-    def set_login_window(self, login_window):
-        """Store a reference to the login window for logout functionality"""
-        self.login_window = login_window
-
-    def _setup_home_ui(self):
+    def _setup_main_ui(self):
         """Set up the UI components for the home page"""
-        main_layout = QVBoxLayout(self.home_widget)
+        main_layout = QVBoxLayout(self.main_view)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Title
@@ -167,7 +159,7 @@ class HomeWindow(QMainWindow):
         self.exit_button = QPushButton("Exit")
         self.exit_button.setMinimumHeight(40)
         self.exit_button.setMinimumWidth(100)
-        self.exit_button.clicked.connect(self.close)
+        self.exit_button.clicked.connect(lambda: self.parent_window.close())
         bottom_buttons_layout.addWidget(self.exit_button)
 
         main_layout.addLayout(bottom_buttons_layout)
@@ -215,11 +207,11 @@ class HomeWindow(QMainWindow):
             )
 
     def show_home(self):
-        """Switch back to the home widget"""
-        self.stacked_widget.setCurrentWidget(self.home_widget)
+        """Switch back to the main home view"""
+        self.stacked_widget.setCurrentWidget(self.main_view)
 
     def _logout(self):
-        """Logout the current user and return to login window"""
+        """Logout the current user and return to login view"""
         reply = QMessageBox.question(
             self,
             "Confirm Logout",
@@ -229,23 +221,10 @@ class HomeWindow(QMainWindow):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            if self.login_window:
+            # Clear any sensitive data or state
+            # Then tell the parent LoginWindow to show the login view
+            if self.parent_window:
+                self.parent_window.show_login()
                 # Clear any sensitive data from the login form
-                self.login_window.username_input.clear()
-                self.login_window.password_input.clear()
-
-                # Show the login window
-                self.login_window.show()
-
-                # Close this window
-                self.close()
-            else:
-                # If login window reference is not available, create a new one
-                from views.login_window import LoginWindow
-
-                login_window = LoginWindow(self.user_model)
-                if hasattr(self, "record_model") and self.record_model:
-                    login_window.setup_models(self.record_model, self.user_model)
-
-                login_window.show()
-                self.close()
+                self.parent_window.username_input.clear()
+                self.parent_window.password_input.clear()

@@ -1,52 +1,49 @@
 # views/register_window.py
 from PyQt6.QtWidgets import (
-    QMainWindow,
-    QWidget,
     QLabel,
     QLineEdit,
-    QPushButton,
+    QMainWindow,
+    QWidget,
     QVBoxLayout,
+    QPushButton,
     QMessageBox,
 )
 
 
-class RegisterWindow(QMainWindow):
+class RegisterWidget(QWidget):
     def __init__(self, user_model, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Register")
-        self.setGeometry(100, 100, 400, 250)
         self.user_model = user_model
+        self.parent_window = parent  # Store reference to parent
+
         self._setup_ui()
 
     def _setup_ui(self):
-        widget = QWidget()
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
+
+        title_label = QLabel("Register New User")
+        main_layout.addWidget(title_label)
 
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Username")
+        main_layout.addWidget(self.username_input)
 
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("Email")
+        main_layout.addWidget(self.email_input)
 
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        main_layout.addWidget(self.password_input)
 
         register_button = QPushButton("Register")
         register_button.clicked.connect(self._register)
+        main_layout.addWidget(register_button)
 
         back_button = QPushButton("Back to Login")
-        back_button.clicked.connect(self._go_back)
-
-        layout.addWidget(QLabel("Register New User"))
-        layout.addWidget(self.username_input)
-        layout.addWidget(self.email_input)
-        layout.addWidget(self.password_input)
-        layout.addWidget(register_button)
-        layout.addWidget(back_button)
-
-        widget.setLayout(layout)
-        self.setCentralWidget(widget)
+        back_button.clicked.connect(self._back_to_login)
+        main_layout.addWidget(back_button)
 
     def _register(self):
         username = self.username_input.text()
@@ -85,12 +82,11 @@ class RegisterWindow(QMainWindow):
 
             # Use UserModel to create the new user
             user_id = self.user_model.create(username, email, password_hash)
-
             if user_id:
                 QMessageBox.information(
                     self, "Success", "Registration complete. You can now log in."
                 )
-                self._go_back()
+                self._back_to_login()
             else:
                 QMessageBox.critical(
                     self, "Error", "Registration failed. Please try again."
@@ -102,9 +98,19 @@ class RegisterWindow(QMainWindow):
                 f"Error creating user: {str(e)}\n\nMake sure database connection is configured properly.",
             )
 
-    def _go_back(self):
+    def _back_to_login(self):
         """Return to login window"""
-        parent = self.parent()
-        if parent:
-            parent.show()
-        self.close()
+        if hasattr(self.parent_window, "show_login"):
+            self.parent_window.show_login()
+
+
+# For backward compatibility
+class RegisterWindow(QMainWindow):
+    def __init__(self, user_model, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Register")
+        self.setGeometry(100, 100, 400, 250)
+
+        # Create the register widget as the central widget
+        self.register_widget = RegisterWidget(user_model, self)
+        self.setCentralWidget(self.register_widget)

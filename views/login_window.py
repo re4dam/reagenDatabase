@@ -1,58 +1,89 @@
 # views/login_window.py
 from PyQt6.QtWidgets import (
     QMainWindow,
+    QStackedWidget,
     QWidget,
     QLabel,
     QLineEdit,
     QPushButton,
     QVBoxLayout,
+    QHBoxLayout,
     QMessageBox,
 )
-from views.register_window import RegisterWindow
-from views.home_window import HomeWindow
+from views.register_window import RegisterWidget
+from views.home_window import (
+    HomeWidget,
+)  # Import the new HomeWidget instead of HomeWindow
 
 
 class LoginWindow(QMainWindow):
     def __init__(self, user_model):
         super().__init__()
-        self.setWindowTitle("Login")
-        self.setGeometry(100, 100, 400, 200)
+        self.setWindowTitle("Reagent Management System")
+        self.setGeometry(
+            100, 100, 800, 600
+        )  # Larger window to accommodate the home view
         self.user_model = user_model
         self.record_model = None  # Will be set through setup_models
-        self.register_window = None
-        self.home_window = None
-        self._setup_ui()
+
+        # Create a stacked widget to manage different views
+        self.stacked_widget = QStackedWidget()
+        self.setCentralWidget(self.stacked_widget)
+
+        # Create the login widget
+        self.login_widget = QWidget()
+        self._setup_login_ui()
+
+        # Add login widget to stacked widget
+        self.stacked_widget.addWidget(self.login_widget)
+
+        # Initialize other widgets as None
+        self.register_widget = None
+        self.home_widget = None
 
     def setup_models(self, record_model, user_model):
-        """Store the models for use when opening windows"""
+        """Store the models for use when opening widgets"""
         self.record_model = record_model
         self.user_model = user_model
 
-    def _setup_ui(self):
-        widget = QWidget()
-        layout = QVBoxLayout()
+    def _setup_login_ui(self):
+        """Set up the UI components for the login page"""
+        layout = QVBoxLayout(self.login_widget)
+
+        title_label = QLabel("Login to Reagent Management System")
+        layout.addWidget(title_label)
 
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Username")
+        layout.addWidget(self.username_input)
 
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(self.password_input)
 
         login_button = QPushButton("Login")
         login_button.clicked.connect(self._login)
+        layout.addWidget(login_button)
 
         register_button = QPushButton("Register")
-        register_button.clicked.connect(self._open_register)
-
-        layout.addWidget(QLabel("Login to Reagent Management System"))
-        layout.addWidget(self.username_input)
-        layout.addWidget(self.password_input)
-        layout.addWidget(login_button)
+        register_button.clicked.connect(self._show_register)
         layout.addWidget(register_button)
 
-        widget.setLayout(layout)
-        self.setCentralWidget(widget)
+        # Add some spacing before the exit button
+        layout.addSpacing(20)
+
+        # Add exit button at the bottom
+        exit_button = QPushButton("Exit")
+        exit_button.clicked.connect(self.close)
+
+        # Use a horizontal layout to position the exit button
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        button_layout.addWidget(exit_button)
+        button_layout.addStretch()
+
+        layout.addLayout(button_layout)
 
     def _login(self):
         username = self.username_input.text()
@@ -72,19 +103,25 @@ class LoginWindow(QMainWindow):
                 QMessageBox.warning(self, "Inactive", "User account is deactivated.")
                 return
 
-            # On success, open HomeWindow with both models
+            # On success, show HomeWidget
             try:
-                self.home_window = HomeWindow()
-                self.home_window.setup_models(self.record_model, self.user_model)
+                # Create the home widget if it doesn't exist yet
+                if not self.home_widget:
+                    self.home_widget = HomeWidget(
+                        self.record_model, self.user_model, self
+                    )
+                    self.stacked_widget.addWidget(self.home_widget)
 
-                # Pass reference to login window for logout functionality
-                self.home_window.set_login_window(self)
+                # Switch to home widget
+                self.stacked_widget.setCurrentWidget(self.home_widget)
 
-                self.home_window.show()
-                self.hide()  # Hide instead of close to allow returning
+                # Set window title and size appropriate for main application
+                self.setWindowTitle("Sistem Manajemen Reagen")
+                self.setGeometry(100, 100, 800, 600)
+
             except Exception as e:
                 QMessageBox.warning(
-                    self, "Error", f"Could not open home window: {str(e)}"
+                    self, "Error", f"Could not open home view: {str(e)}"
                 )
         except Exception as e:
             QMessageBox.critical(
@@ -93,7 +130,20 @@ class LoginWindow(QMainWindow):
                 f"Error connecting to database: {str(e)}\n\nEnsure database connection is properly configured.",
             )
 
-    def _open_register(self):
-        self.register_window = RegisterWindow(self.user_model, parent=self)
-        self.register_window.show()
-        self.hide()
+    def _show_register(self):
+        """Show the register widget"""
+        if not self.register_widget:
+            self.register_widget = RegisterWidget(self.user_model, self)
+            self.stacked_widget.addWidget(self.register_widget)
+
+        # Switch to register widget
+        self.stacked_widget.setCurrentWidget(self.register_widget)
+
+    def show_login(self):
+        """Switch back to the login widget"""
+        # Reset window title and size for login view
+        self.setWindowTitle("Login")
+        self.setGeometry(100, 100, 400, 250)
+
+        # Switch to login widget
+        self.stacked_widget.setCurrentWidget(self.login_widget)
