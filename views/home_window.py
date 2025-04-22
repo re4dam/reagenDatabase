@@ -9,9 +9,12 @@ from PyQt6.QtWidgets import (
     QLabel,
     QHBoxLayout,
     QMessageBox,
+    QStackedWidget,  # Add this import
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+from views.record_window import RecordWidget  # Import widgets instead of windows
+from views.user_window import UserWidget  # Import widgets instead of windows
 
 
 class HomeWindow(QMainWindow):
@@ -19,17 +22,28 @@ class HomeWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("Sistem Manajemen Reagen")
         self.setGeometry(200, 200, 600, 400)
-        self.record_window = None
-        self.user_window = None
         self.record_model = None
         self.user_model = None
         self.login_window = None  # Reference to the login window
-        self.rack_windows = [None, None, None, None]  # Initialize rack windows list
+        self.rack_widgets = [None, None, None, None]  # Initialize rack widgets list
 
-        self._setup_ui()
+        # Create a stacked widget to manage different views
+        self.stacked_widget = QStackedWidget()
+        self.setCentralWidget(self.stacked_widget)
+
+        # Create the home widget
+        self.home_widget = QWidget()
+        self._setup_home_ui()
+
+        # Add home widget to stacked widget
+        self.stacked_widget.addWidget(self.home_widget)
+
+        # Initialize other widgets as None
+        self.record_widget = None
+        self.user_widget = None
 
     def setup_models(self, record_model, user_model):
-        """Store the models for use when opening windows"""
+        """Store the models for use when opening widgets"""
         self.record_model = record_model
         self.user_model = user_model
 
@@ -37,12 +51,9 @@ class HomeWindow(QMainWindow):
         """Store a reference to the login window for logout functionality"""
         self.login_window = login_window
 
-    def _setup_ui(self):
+    def _setup_home_ui(self):
         """Set up the UI components for the home page"""
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-
-        main_layout = QVBoxLayout(central_widget)
+        main_layout = QVBoxLayout(self.home_widget)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Title
@@ -88,14 +99,14 @@ class HomeWindow(QMainWindow):
         self.db_button = QPushButton("Record Manager")
         self.db_button.setMinimumHeight(60)
         self.db_button.setMinimumWidth(180)
-        self.db_button.clicked.connect(self._open_record_manager)
+        self.db_button.clicked.connect(self._show_record_manager)
         buttons_layout.addWidget(self.db_button)
 
         # User Management Button
         self.user_button = QPushButton("User Management")
         self.user_button.setMinimumHeight(60)
         self.user_button.setMinimumWidth(180)
-        self.user_button.clicked.connect(self._open_user_management)
+        self.user_button.clicked.connect(self._show_user_management)
         buttons_layout.addWidget(self.user_button)
 
         main_layout.addLayout(buttons_layout)
@@ -128,7 +139,7 @@ class HomeWindow(QMainWindow):
                 "QPushButton:hover { background-color: #cce4ff; }"
             )
 
-            rack_button.clicked.connect(lambda checked, index=i: self._open_rack(index))
+            rack_button.clicked.connect(lambda checked, index=i: self._show_rack(index))
 
             rack_layout.addWidget(rack_button, row, col)
             self.rack_buttons.append(rack_button)
@@ -161,66 +172,51 @@ class HomeWindow(QMainWindow):
 
         main_layout.addLayout(bottom_buttons_layout)
 
-    def _open_record_manager(self):
-        """Open the database manager window"""
-        from views.record_window import MainWindow
+    def _show_record_manager(self):
+        """Show the record manager widget"""
+        if not self.record_widget:
+            self.record_widget = RecordWidget(self.record_model, self)
+            self.stacked_widget.addWidget(self.record_widget)
 
-        if not self.record_window:
-            self.record_window = MainWindow(self.record_model)
+        # Switch to record widget
+        self.stacked_widget.setCurrentWidget(self.record_widget)
 
-            # Add back button functionality to return to home
-            self.record_window.closeEvent = lambda event: self._on_window_close(
-                event, self.record_window
-            )
+    def _show_user_management(self):
+        """Show the user management widget"""
+        if not self.user_widget:
+            self.user_widget = UserWidget(self.user_model, self)
+            self.stacked_widget.addWidget(self.user_widget)
 
-        self.record_window.show()
-        self.hide()  # Hide the home window
+        # Switch to user widget
+        self.stacked_widget.setCurrentWidget(self.user_widget)
 
-    def _open_user_management(self):
-        """Open the user management window"""
-        from views.user_window import UserManagementWindow
-
-        if not self.user_window:
-            self.user_window = UserManagementWindow(self.user_model)
-
-            # Add back button functionality to return to home
-            self.user_window.closeEvent = lambda event: self._on_window_close(
-                event, self.user_window
-            )
-
-        self.user_window.show()
-        self.hide()  # Hide the home window
-
-    def _open_rack(self, rack_index):
-        """Open a specific reagent rack window"""
+    def _show_rack(self, rack_index):
+        """Show a specific reagent rack widget"""
         try:
-            # This is where you would import your rack window class
-            # For now, we'll use a placeholder implementation
-            from views.rack_window import RackWindow  # You'll need to create this
+            # This is where you would import your rack widget class
+            from views.rack_window import RackWidget  # You'll need to create this
 
-            if not self.rack_windows[rack_index]:
+            if not self.rack_widgets[rack_index]:
                 rack_name = f"Rack {chr(65 + rack_index)}"  # A, B, C, D
-                self.rack_windows[rack_index] = RackWindow(self.record_model, rack_name)
-
-                # Add back button functionality to return to home
-                self.rack_windows[rack_index].closeEvent = (
-                    lambda event: self._on_window_close(
-                        event, self.rack_windows[rack_index]
-                    )
+                self.rack_widgets[rack_index] = RackWidget(
+                    self.record_model, rack_name, self
                 )
+                self.stacked_widget.addWidget(self.rack_widgets[rack_index])
 
-            self.rack_windows[rack_index].show()
-            self.hide()  # Hide the home window
+            # Switch to rack widget
+            self.stacked_widget.setCurrentWidget(self.rack_widgets[rack_index])
 
         except ImportError:
-            # If the rack window class isn't created yet, show a message
-            from PyQt6.QtWidgets import QMessageBox
-
+            # If the rack widget class isn't created yet, show a message
             QMessageBox.information(
                 self,
                 "Coming Soon",
-                f"Rack {chr(65 + rack_index)} management window is not yet implemented.",
+                f"Rack {chr(65 + rack_index)} management widget is not yet implemented.",
             )
+
+    def show_home(self):
+        """Switch back to the home widget"""
+        self.stacked_widget.setCurrentWidget(self.home_widget)
 
     def _logout(self):
         """Logout the current user and return to login window"""
@@ -241,9 +237,6 @@ class HomeWindow(QMainWindow):
                 # Show the login window
                 self.login_window.show()
 
-                # Close all child windows
-                self._close_all_child_windows()
-
                 # Close this window
                 self.close()
             else:
@@ -256,23 +249,3 @@ class HomeWindow(QMainWindow):
 
                 login_window.show()
                 self.close()
-
-    def _close_all_child_windows(self):
-        """Close all child windows"""
-        if self.record_window and self.record_window.isVisible():
-            self.record_window.close()
-
-        if self.user_window and self.user_window.isVisible():
-            self.user_window.close()
-
-        for rack_window in self.rack_windows:
-            if rack_window and rack_window.isVisible():
-                rack_window.close()
-
-    def _on_window_close(self, event, window):
-        """Handle when a child window is closed"""
-        # Show the home window again
-        self.show()
-
-        # Let the window close as normal
-        event.accept()

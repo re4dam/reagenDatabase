@@ -1,7 +1,7 @@
+# views/record_window.py
 from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
-    QMainWindow,
     QWidget,
     QVBoxLayout,
     QTableView,
@@ -47,12 +47,11 @@ class RecordsTableModel(QAbstractTableModel):
         return str(section + 1)
 
 
-class MainWindow(QMainWindow):
+class RecordWidget(QWidget):
     def __init__(self, record_model, parent=None):
         super().__init__(parent)
         self.record_model = record_model
-        self.setWindowTitle("Record Manager")
-        self.setGeometry(100, 100, 800, 600)
+        self.parent_window = parent  # Store reference to parent
         self.current_selected_id = None  # To keep track of selected record for update
 
         self._setup_ui()
@@ -60,11 +59,7 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self):
         """Initialize UI components"""
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-
-        main_layout = QVBoxLayout()
-        central_widget.setLayout(main_layout)
+        main_layout = QVBoxLayout(self)
 
         # Form Layout
         form_widget = QWidget()
@@ -105,13 +100,8 @@ class MainWindow(QMainWindow):
         self.clear_button.clicked.connect(self._clear_form)
         button_layout.addWidget(self.clear_button)
 
-        # In the MainWindow class in main_window.py, add this to the _setup_ui method:
-        # Add this after the button_layout is defined
-
         self.back_button = QPushButton("Back to Home")
-        self.back_button.clicked.connect(
-            self.close
-        )  # Closing will return to home window
+        self.back_button.clicked.connect(self._back_to_home)  # Return to home widget
         button_layout.addWidget(self.back_button)
 
         # Table View
@@ -128,10 +118,10 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(button_widget)
         main_layout.addWidget(self.table_view)
 
-    # And add this method to the MainWindow class:
-    def closeEvent(self, event):
-        # This will be overridden by the home window to show itself again
-        event.accept()
+    def _back_to_home(self):
+        """Go back to home widget"""
+        if hasattr(self.parent_window, "show_home"):
+            self.parent_window.show_home()
 
     def _load_data(self):
         """Load data from database and display in table"""

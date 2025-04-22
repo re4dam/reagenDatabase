@@ -47,21 +47,18 @@ class UserTableModel(QAbstractTableModel):
         )
 
 
-class UserManagementWindow(QMainWindow):
+class UserWidget(QWidget):
     def __init__(self, user_model, parent=None):
         super().__init__(parent)
         self.user_model = user_model
+        self.parent_window = parent  # Store reference to parent
         self.current_user_id = None
-        self.setWindowTitle("User Management System")
-        self.setGeometry(100, 100, 800, 600)
 
         self._setup_ui()
         self._load_users()
 
     def _setup_ui(self):
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
+        main_layout = QVBoxLayout(self)
 
         # Form
         form_widget = QWidget()
@@ -104,13 +101,8 @@ class UserManagementWindow(QMainWindow):
         self.toggle_active_button.setEnabled(False)
         button_layout.addWidget(self.toggle_active_button)
 
-        # In the UserManagementWindow class in user_window.py, add this to the _setup_ui method:
-        # Add this to the button_layout
-
         self.back_button = QPushButton("Back to Home")
-        self.back_button.clicked.connect(
-            self.close
-        )  # Closing will return to home window
+        self.back_button.clicked.connect(self._back_to_home)  # Return to home widget
         button_layout.addWidget(self.back_button)
 
         # Table
@@ -125,10 +117,10 @@ class UserManagementWindow(QMainWindow):
         main_layout.addWidget(button_widget)
         main_layout.addWidget(self.users_table)
 
-    # And add this method to the UserManagementWindow class:
-    def closeEvent(self, event):
-        # This will be overridden by the home window to show itself again
-        event.accept()
+    def _back_to_home(self):
+        """Go back to home widget"""
+        if hasattr(self.parent_window, "show_home"):
+            self.parent_window.show_home()
 
     def _load_users(self):
         users = self.user_model.get_all_active()
@@ -168,7 +160,7 @@ class UserManagementWindow(QMainWindow):
         self.add_button.setEnabled(False)
 
         # Update toggle button text based on status
-        status = model.index(row, 3).data()
+        status = model.index(row, 4).data()  # Status is in column 4
         self.toggle_active_button.setText(
             "Deactivate" if status == "Active" else "Activate"
         )
@@ -303,3 +295,15 @@ class UserManagementWindow(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Database error: {str(e)}")
+
+
+# For backward compatibility
+class UserManagementWindow(QMainWindow):
+    def __init__(self, user_model, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("User Management System")
+        self.setGeometry(100, 100, 800, 600)
+
+        # Create the user widget as the central widget
+        self.user_widget = UserWidget(user_model, self)
+        self.setCentralWidget(self.user_widget)
