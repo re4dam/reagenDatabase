@@ -20,8 +20,9 @@ class HomeWindow(QMainWindow):
         self.setGeometry(200, 200, 600, 400)
         self.record_window = None
         self.user_window = None
-        self.record_manager = None
+        self.record_model = None
         self.user_model = None
+        self.rack_windows = [None, None, None, None]  # Initialize rack windows list
 
         self._setup_ui()
 
