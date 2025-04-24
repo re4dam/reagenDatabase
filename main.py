@@ -1,6 +1,8 @@
 import sys
 from PyQt6.QtWidgets import QApplication
+from models.identity_model import IdentityModel
 from models.record_model import RecordModel
+from models.storage_model import StorageModel
 from models.user_model import UserModel
 from models.database import DatabaseManager
 from views.login_window import LoginWindow
@@ -13,6 +15,8 @@ def main():
     db = DatabaseManager("my_database.db")
     user_model = UserModel(db)
     record_model = RecordModel(db)
+    storage_model = StorageModel(db)
+    identity_model = IdentityModel(db)
 
     # You can log in with these test credentials:
     # Username: admin, Password: admin123
@@ -22,7 +26,7 @@ def main():
     # Initialize login window with required models
     login_window = LoginWindow(user_model)
     login_window.setup_models(
-        record_model, user_model
+        record_model, user_model, storage_model, identity_model
     )  # Make sure login window has both models
     login_window.show()
 

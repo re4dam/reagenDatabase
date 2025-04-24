@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QMessageBox,
 )
+from models import identity_model
 from views.register_window import RegisterWidget
 from views.home_window import (
     HomeWidget,
@@ -25,6 +26,7 @@ class LoginWindow(QMainWindow):
         )  # Larger window to accommodate the home view
         self.user_model = user_model
         self.record_model = None  # Will be set through setup_models
+        self.storage_model = None  # Added storage model
 
         # Create a stacked widget to manage different views
         self.stacked_widget = QStackedWidget()
@@ -41,10 +43,14 @@ class LoginWindow(QMainWindow):
         self.register_widget = None
         self.home_widget = None
 
-    def setup_models(self, record_model, user_model):
+    def setup_models(
+        self, record_model, user_model, storage_model=None, identity_model=None
+    ):
         """Store the models for use when opening widgets"""
         self.record_model = record_model
         self.user_model = user_model
+        self.storage_model = storage_model  # Store the storage model
+        self.identity_model = identity_model
 
     def _setup_login_ui(self):
         """Set up the UI components for the login page"""
@@ -107,8 +113,20 @@ class LoginWindow(QMainWindow):
             try:
                 # Create the home widget if it doesn't exist yet
                 if not self.home_widget:
+                    # Check if storage_model is available
+                    if not self.storage_model:
+                        QMessageBox.warning(
+                            self,
+                            "Missing Model",
+                            "Storage model is not initialized. Some features may not work properly.",
+                        )
+
                     self.home_widget = HomeWidget(
-                        self.record_model, self.user_model, self
+                        record_model=self.record_model,
+                        user_model=self.user_model,
+                        storage_model=self.storage_model,  # Pass the storage model
+                        identity_model=self.identity_model,
+                        parent=self,
                     )
                     self.stacked_widget.addWidget(self.home_widget)
 

@@ -14,15 +14,21 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from views.record_window import RecordWidget
 from views.user_window import UserWidget
+from views.rack_window import RackWidget
 
 
 class HomeWidget(QWidget):
-    def __init__(self, record_model, user_model, parent=None):
+    def __init__(
+        self, record_model, user_model, storage_model, identity_model, parent=None
+    ):
         super().__init__(parent)
         self.record_model = record_model
         self.user_model = user_model
+        self.storage_model = storage_model  # Add storage model
+        self.identity_model = identity_model
         self.parent_window = parent  # Reference to the parent window (LoginWindow)
-        self.rack_widgets = [None, None, None, None]  # Initialize rack widgets list
+        self.rack_widgets = {}  # Use dictionary to store rack widgets by storage id
+        self.storage_data = []  # Store storage data
 
         # Create a stacked widget to manage different views within the home widget
         self.stacked_widget = QStackedWidget(self)
@@ -42,6 +48,15 @@ class HomeWidget(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(self.stacked_widget)
+
+    def _get_storage_data(self):
+        """Fetch storage data from the database"""
+        try:
+            storage_data = self.storage_model.get_all()
+            return storage_data if storage_data else []
+        except Exception as e:
+            print(f"Error getting storage data: {str(e)}")
+            return []
 
     def _setup_main_ui(self):
         """Set up the UI components for the home page"""
@@ -104,45 +119,36 @@ class HomeWidget(QWidget):
         main_layout.addLayout(buttons_layout)
         main_layout.addSpacing(30)
 
-        # reagent rack buttons in grid layout
-        rack_label = QLabel("Reagent Racks:")
+        # Storage/Rack label
+        rack_label = QLabel("Reagent Storage:")
         rack_label.setFont(modules_font)
         main_layout.addWidget(rack_label, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        # reagent rack buttons in grid layout
-        rack_layout = QGridLayout()
-        rack_layout.setSpacing(15)
+        # Storage/rack buttons in grid layout
+        self.rack_layout = QGridLayout()
+        self.rack_layout.setSpacing(15)
+        main_layout.addLayout(self.rack_layout)
 
-        # create/initiate 4 rack buttons in a 2 x 2 grid
-        self.rack_buttons = []
-        rack_names = ["Rack A", "Rack B", "Rack C", "Rack D"]
+        # Get storage data and create buttons
+        self._load_storage_buttons()
 
-        for i in range(4):
-            row = i // 2
-            col = i % 2
-
-            rack_button = QPushButton(rack_names[i])
-            rack_button.setMinimumHeight(80)
-            rack_button.setMinimumWidth(250)
-
-            # Set a distinct style for rack buttons
-            rack_button.setStyleSheet(
-                "QPushButton { background-color: #ddeeff; border: 2px solid #bbccee; border-radius: 8px; font-size: 14px; font-weight: bold; }"
-                "QPushButton:hover { background-color: #cce4ff; }"
-            )
-
-            rack_button.clicked.connect(lambda checked, index=i: self._show_rack(index))
-
-            rack_layout.addWidget(rack_button, row, col)
-            self.rack_buttons.append(rack_button)
-
-        main_layout.addLayout(rack_layout)
         main_layout.addSpacing(40)
 
         # Bottom buttons container
         bottom_buttons_layout = QHBoxLayout()
         bottom_buttons_layout.setSpacing(20)
         bottom_buttons_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Refresh button
+        self.refresh_button = QPushButton("Refresh Storage")
+        self.refresh_button.setMinimumHeight(40)
+        self.refresh_button.setMinimumWidth(120)
+        self.refresh_button.setStyleSheet(
+            "QPushButton { background-color: #ccffcc; border: 2px solid #99cc99; border-radius: 5px; }"
+            "QPushButton:hover { background-color: #bbffbb; }"
+        )
+        self.refresh_button.clicked.connect(self._refresh_storage)
+        bottom_buttons_layout.addWidget(self.refresh_button)
 
         # Logout button
         self.logout_button = QPushButton("Logout")
@@ -164,6 +170,63 @@ class HomeWidget(QWidget):
 
         main_layout.addLayout(bottom_buttons_layout)
 
+    def _load_storage_buttons(self):
+        """Load storage data and create buttons for each storage location"""
+        # Clear existing buttons first
+        for i in reversed(range(self.rack_layout.count())):
+            widget = self.rack_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.setParent(None)
+
+        # Get fresh storage data
+        self.storage_data = self._get_storage_data()
+        self.rack_buttons = []
+
+        # Create buttons for each storage location
+        for i, storage in enumerate(self.storage_data):
+            row = i // 2
+            col = i % 2
+
+            storage_name = storage.get("Name", f"Storage {i + 1}")
+            storage_id = storage.get("id")
+
+            rack_button = QPushButton(storage_name)
+            rack_button.setMinimumHeight(80)
+            rack_button.setMinimumWidth(250)
+
+            # Set a distinct style for rack buttons
+            rack_button.setStyleSheet(
+                "QPushButton { background-color: #ddeeff; border: 2px solid #bbccee; border-radius: 8px; font-size: 14px; font-weight: bold; }"
+                "QPushButton:hover { background-color: #cce4ff; }"
+            )
+
+            # Connect button to show the storage/rack
+            rack_button.clicked.connect(
+                lambda checked, sid=storage_id, sname=storage_name: self._show_rack(
+                    sid, sname
+                )
+            )
+
+            self.rack_layout.addWidget(rack_button, row, col)
+            self.rack_buttons.append(rack_button)
+
+        # If no storage found, show a message
+        if not self.storage_data:
+            no_storage_label = QLabel(
+                "No storage locations found. Please add storage in the database."
+            )
+            no_storage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.rack_layout.addWidget(no_storage_label, 0, 0, 1, 2)
+
+    def _refresh_storage(self):
+        """Refresh the storage button display"""
+        self._load_storage_buttons()
+        QMessageBox.information(
+            self,
+            "Storage Refreshed",
+            "Storage locations have been refreshed from the database.",
+        )
+
     def _show_record_manager(self):
         """Show the record manager widget"""
         if not self.record_widget:
@@ -182,28 +245,28 @@ class HomeWidget(QWidget):
         # Switch to user widget
         self.stacked_widget.setCurrentWidget(self.user_widget)
 
-    def _show_rack(self, rack_index):
-        """Show a specific reagent rack widget"""
+    def _show_rack(self, storage_id, storage_name):
+        """Show a specific reagent rack widget based on storage ID"""
         try:
-            # This is where you would import your rack widget class
-            from views.rack_window import RackWidget  # You'll need to create this
-
-            if not self.rack_widgets[rack_index]:
-                rack_name = f"Rack {chr(65 + rack_index)}"  # A, B, C, D
-                self.rack_widgets[rack_index] = RackWidget(
-                    self.record_model, rack_name, self
+            # Create a new rack widget if it doesn't exist for this storage ID
+            if storage_id not in self.rack_widgets:
+                self.rack_widgets[storage_id] = RackWidget(
+                    identity_model=self.identity_model,
+                    storage_model=self.storage_model,
+                    rack_name=storage_name,
+                    parent=self,
                 )
-                self.stacked_widget.addWidget(self.rack_widgets[rack_index])
+                self.stacked_widget.addWidget(self.rack_widgets[storage_id])
 
-            # Switch to rack widget
-            self.stacked_widget.setCurrentWidget(self.rack_widgets[rack_index])
+            # Switch to the rack widget
+            self.stacked_widget.setCurrentWidget(self.rack_widgets[storage_id])
 
-        except ImportError:
-            # If the rack widget class isn't created yet, show a message
-            QMessageBox.information(
+        except Exception as e:
+            # If there's an error, show a message
+            QMessageBox.warning(
                 self,
-                "Coming Soon",
-                f"Rack {chr(65 + rack_index)} management widget is not yet implemented.",
+                "Error",
+                f"Could not open storage: {str(e)}",
             )
 
     def show_home(self):

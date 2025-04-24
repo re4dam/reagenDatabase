@@ -9,50 +9,72 @@ from PyQt6.QtWidgets import (
     QFrame,
     QMessageBox,
     QScrollArea,
+    QStackedLayout,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+from views.reagent_panel import ReagentDetailPanel
 
 
 class RackWidget(QWidget):
-    def __init__(self, record_model, rack_name, parent=None):
+    def __init__(self, identity_model, storage_model, rack_name, parent=None):
         super().__init__(parent)
-        self.record_model = record_model
+        self.identity_model = identity_model  # Model for reagent operations
+        self.storage_model = storage_model  # Model for storage operations
         self.rack_name = rack_name
         self.parent_widget = parent  # Reference to the parent HomeWidget
         self.current_page = 0
         self.items_per_page = 10  # 2x5 grid
 
-        # This would come from your database in a real implementation
-        # For now, we'll use dummy data
-        self.reagents = self._get_dummy_reagents()
+        # Get storage ID for this rack
+        self.storage_id = self._get_storage_id()
 
-        self._setup_ui()
+        # Get reagents for this storage location
+        self.reagents = self._get_reagents()
 
-    def _get_dummy_reagents(self):
-        """Return dummy reagent data for demonstration purposes"""
-        # In a real implementation, you would query your database here
-        # Example: return self.record_model.get_reagents_by_rack(self.rack_name)
+        # Create a stacked layout to switch between views
+        self.main_stack = QStackedLayout()
 
-        # Create dummy reagents (25 items to demonstrate pagination)
-        dummy_reagents = []
-        for i in range(1, 26):
-            reagent = {
-                "id": i,
-                "name": f"Reagent {i}",
-                "formula": f"Formula-{i}",
-                "location": f"{self.rack_name}-{(i - 1) // 10 + 1}-{(i - 1) % 10 + 1}",  # Rack-Page-Position
-                "quantity": f"{i * 10} mL",
-                "expiry_date": "2025-12-31",
-            }
-            dummy_reagents.append(reagent)
+        # Create the rack view as a separate panel
+        self.rack_panel = QWidget()
+        self.rack_layout = QVBoxLayout(self.rack_panel)
+        self._setup_rack_ui()  # Contains what was in _setup_ui
 
-        return dummy_reagents
+        # Add rack panel to stack
+        self.main_stack.addWidget(self.rack_panel)
 
-    def _setup_ui(self):
-        """Set up the UI components for the rack view"""
+        # Main layout contains only the stack
         main_layout = QVBoxLayout(self)
+        main_layout.addLayout(self.main_stack)
 
+    def _get_storage_id(self):
+        """Get the storage ID for this rack"""
+        try:
+            # Query the storage based on rack name
+            storage = self.storage_model.get_all()
+            # Find the storage matching this rack name
+            for item in storage:
+                if item.get("Name") == self.rack_name:
+                    return item.get("id")
+
+            # If not found, return a default (for development)
+            return 1
+        except Exception as e:
+            print(f"Error getting storage ID: {str(e)}")
+            return 1
+
+    def _get_reagents(self):
+        """Return reagent data from the database"""
+        try:
+            # Get reagents from this storage location
+            reagents = self.identity_model.get_by_storage(self.storage_id)
+            return reagents if reagents else []
+        except Exception as e:
+            print(f"Error getting reagents: {str(e)}")
+            return []
+
+    def _setup_rack_ui(self):
+        """Set up the UI components for the rack view"""
         # Title
         title_label = QLabel(f"{self.rack_name} - Reagent Management")
         title_font = QFont()
@@ -60,14 +82,32 @@ class RackWidget(QWidget):
         title_font.setBold(True)
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(title_label)
+        self.rack_layout.addWidget(title_label)
 
         # Add a divider
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.HLine)
         divider.setFrameShadow(QFrame.Shadow.Sunken)
-        main_layout.addWidget(divider)
-        main_layout.addSpacing(10)
+        self.rack_layout.addWidget(divider)
+        self.rack_layout.addSpacing(10)
+
+        # Add button for new reagent
+        add_button_layout = QHBoxLayout()
+        add_button_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+
+        self.add_reagent_button = QPushButton("+ Add New Reagent")
+        self.add_reagent_button.setMinimumHeight(40)
+        self.add_reagent_button.setMinimumWidth(150)
+        self.add_reagent_button.setStyleSheet(
+            "QPushButton { background-color: #ccffcc; border: 2px solid #66cc66; "
+            "border-radius: 5px; font-weight: bold; }"
+            "QPushButton:hover { background-color: #a3d9a3; }"
+        )
+        self.add_reagent_button.clicked.connect(self._add_new_reagent)
+        add_button_layout.addWidget(self.add_reagent_button)
+
+        self.rack_layout.addLayout(add_button_layout)
+        self.rack_layout.addSpacing(10)
 
         # Create a scrollable area for the reagent grid
         scroll_area = QScrollArea()
@@ -76,7 +116,7 @@ class RackWidget(QWidget):
         self.grid_layout = QGridLayout(scroll_content)
         self.grid_layout.setSpacing(10)
         scroll_area.setWidget(scroll_content)
-        main_layout.addWidget(scroll_area)
+        self.rack_layout.addWidget(scroll_area)
 
         # Navigation buttons layout
         nav_layout = QHBoxLayout()
@@ -100,8 +140,8 @@ class RackWidget(QWidget):
         self.next_button.clicked.connect(self._go_to_next_page)
         nav_layout.addWidget(self.next_button)
 
-        main_layout.addLayout(nav_layout)
-        main_layout.addSpacing(10)
+        self.rack_layout.addLayout(nav_layout)
+        self.rack_layout.addSpacing(10)
 
         # Back button
         back_layout = QHBoxLayout()
@@ -113,7 +153,7 @@ class RackWidget(QWidget):
         self.back_button.clicked.connect(self._go_back)
         back_layout.addWidget(self.back_button)
 
-        main_layout.addLayout(back_layout)
+        self.rack_layout.addLayout(back_layout)
 
         # Now load the first page of reagents AFTER all UI elements are created
         self._load_current_page()
@@ -138,21 +178,22 @@ class RackWidget(QWidget):
             reagent = self.reagents[i]
 
             # Create button for each reagent
-            reagent_button = QPushButton(reagent["name"])
+            reagent_button = QPushButton()
             reagent_button.setMinimumHeight(70)
 
-            # Add additional info to the button
-            button_text = (
-                f"{reagent['name']}\n{reagent['formula']}\n{reagent['quantity']}"
-            )
+            # Add info to the button
+            name = reagent.get("Name", "Unknown")
+            wujud = reagent.get("Wujud", "")
+            stock = reagent.get("Stock", 0)
+
+            # Format the button text
+            button_text = f"{name}\n{wujud}\nStock: {stock}"
             reagent_button.setText(button_text)
 
-            # Set style for reagent buttons
-            reagent_button.setStyleSheet(
-                "QPushButton { background-color: #e6f2ff; border: 2px solid #99ccff; "
-                "border-radius: 5px; text-align: center; }"
-                "QPushButton:hover { background-color: #cce6ff; }"
-            )
+            # Set style based on hazard category
+            hazard = reagent.get("Category_Hazard", "Low")
+            button_style = self._get_button_style_for_hazard(hazard)
+            reagent_button.setStyleSheet(button_style)
 
             # Connect button to view reagent details
             reagent_button.clicked.connect(
@@ -170,9 +211,29 @@ class RackWidget(QWidget):
         # Update page label
         self.page_label.setText(f"Page {self.current_page + 1}/{self._total_pages()}")
 
+    def _get_button_style_for_hazard(self, hazard_category):
+        """Return button style based on hazard category"""
+        if hazard_category == "High" or hazard_category == "Extreme":
+            return (
+                "QPushButton { background-color: #ffcccc; border: 2px solid #ff6666; border-radius: 5px; text-align: center; }"
+                "QPushButton:hover { background-color: #ffaaaa; }"  # Slightly brighter red
+            )
+        elif hazard_category == "Medium":
+            return (
+                "QPushButton { background-color: #fff2cc; border: 2px solid #ffcc66; border-radius: 5px; text-align: center; }"
+                "QPushButton:hover { background-color: #ffebaa; }"  # Slightly brighter yellow
+            )
+        else:  # Low or None
+            return (
+                "QPushButton { background-color: #e6f2ff; border: 2px solid #99ccff; border-radius: 5px; text-align: center; }"
+                "QPushButton:hover { background-color: #cce6ff; }"  # Slightly brighter blue
+            )
+
     def _total_pages(self):
         """Calculate the total number of pages"""
-        return (len(self.reagents) + self.items_per_page - 1) // self.items_per_page
+        return max(
+            1, (len(self.reagents) + self.items_per_page - 1) // self.items_per_page
+        )
 
     def _go_to_previous_page(self):
         """Navigate to the previous page"""
@@ -197,23 +258,50 @@ class RackWidget(QWidget):
         self.next_button.setEnabled(self.current_page < self._total_pages() - 1)
 
     def _view_reagent_details(self, reagent_id):
-        """View details of a specific reagent"""
-        # Find the reagent by ID
-        reagent = next((r for r in self.reagents if r["id"] == reagent_id), None)
+        """Switch to reagent details view for a specific reagent"""
+        # Create the detail panel
+        self.detail_panel = ReagentDetailPanel(
+            identity_model=self.identity_model,
+            reagent_id=reagent_id,
+            rack_name=self.rack_name,
+            parent=self,
+        )
 
-        if reagent:
-            # In a real application, you would navigate to a detailed view or show a dialog
-            # For now, we'll just show a message box with reagent details
-            details = (
-                f"Reagent Details:\n\n"
-                f"Name: {reagent['name']}\n"
-                f"Formula: {reagent['formula']}\n"
-                f"Location: {reagent['location']}\n"
-                f"Quantity: {reagent['quantity']}\n"
-                f"Expiry Date: {reagent['expiry_date']}"
-            )
+        # Add to stack and switch to it
+        self.main_stack.addWidget(self.detail_panel)
+        self.main_stack.setCurrentWidget(self.detail_panel)
 
-            QMessageBox.information(self, "Reagent Details", details)
+    def _add_new_reagent(self):
+        """Switch to reagent details view for adding a new reagent"""
+        # Create a new reagent panel with no reagent ID (for new reagent)
+        self.detail_panel = ReagentDetailPanel(
+            identity_model=self.identity_model,
+            reagent_id=None,  # None indicates a new reagent
+            rack_name=self.rack_name,
+            parent=self,
+        )
+
+        # Add to stack and switch to it
+        self.main_stack.addWidget(self.detail_panel)
+        self.main_stack.setCurrentWidget(self.detail_panel)
+
+    def show_rack_view(self):
+        """Switch back to the rack view"""
+        # Remove the detail panel from stack if it exists
+        if hasattr(self, "detail_panel") and self.detail_panel is not None:
+            self.main_stack.removeWidget(self.detail_panel)
+            self.detail_panel.deleteLater()
+            self.detail_panel = None
+
+        # Ensure rack panel is current
+        self.main_stack.setCurrentWidget(self.rack_panel)
+
+    def refresh_reagents(self):
+        """Refresh the list of reagents"""
+        self.reagents = self._get_reagents()
+        self.current_page = 0  # Reset to first page
+        self._load_current_page()
+        self._update_navigation_buttons()
 
     def _go_back(self):
         """Return to the home screen"""
