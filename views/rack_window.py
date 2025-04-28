@@ -17,10 +17,13 @@ from views.reagent_panel import ReagentDetailPanel
 
 
 class RackWidget(QWidget):
-    def __init__(self, identity_model, storage_model, rack_name, parent=None):
+    def __init__(
+        self, identity_model, storage_model, usage_model, rack_name, parent=None
+    ):
         super().__init__(parent)
         self.identity_model = identity_model  # Model for reagent operations
         self.storage_model = storage_model  # Model for storage operations
+        self.usage_model = usage_model
         self.rack_name = rack_name
         self.parent_widget = parent  # Reference to the parent HomeWidget
         self.current_page = 0
@@ -307,3 +310,31 @@ class RackWidget(QWidget):
         """Return to the home screen"""
         if self.parent_widget:
             self.parent_widget.show_home()
+
+    def show_usage_reports(self, reagent_id, reagent_name):
+        """Show usage reports for a specific reagent"""
+        try:
+            # For this to work, you'll need to import the UsageReportPanel
+            from views.usage_report_panel import UsageReportPanel
+
+            # # You'll also need a reference to the usage model
+            # from models.usage_model import UsageModel  # Adjust path as needed
+            #
+            # usage_model = UsageModel()  # Instantiate the usage model
+
+            # Create the usage report panel
+            self.usage_panel = UsageReportPanel(
+                usage_model=self.usage_model,
+                identity_model=self.identity_model,
+                reagent_id=reagent_id,
+                reagent_name=reagent_name,
+                parent=self,
+            )
+
+            # Add to stack and switch to it
+            self.main_stack.addWidget(self.usage_panel)
+            self.main_stack.setCurrentWidget(self.usage_panel)
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error", f"Failed to show usage reports: {str(e)}"
+            )

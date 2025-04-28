@@ -44,13 +44,19 @@ class LoginWindow(QMainWindow):
         self.home_widget = None
 
     def setup_models(
-        self, record_model, user_model, storage_model=None, identity_model=None
+        self,
+        record_model,
+        user_model,
+        storage_model=None,
+        identity_model=None,
+        usage_model=None,
     ):
         """Store the models for use when opening widgets"""
         self.record_model = record_model
         self.user_model = user_model
         self.storage_model = storage_model  # Store the storage model
         self.identity_model = identity_model
+        self.usage_model = usage_model
 
     def _setup_login_ui(self):
         """Set up the UI components for the login page"""
@@ -126,6 +132,7 @@ class LoginWindow(QMainWindow):
                         user_model=self.user_model,
                         storage_model=self.storage_model,  # Pass the storage model
                         identity_model=self.identity_model,
+                        usage_model=self.usage_model,
                         parent=self,
                     )
                     self.stacked_widget.addWidget(self.home_widget)

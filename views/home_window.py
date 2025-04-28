@@ -19,7 +19,13 @@ from views.rack_window import RackWidget
 
 class HomeWidget(QWidget):
     def __init__(
-        self, record_model, user_model, storage_model, identity_model, parent=None
+        self,
+        record_model,
+        user_model,
+        storage_model,
+        identity_model,
+        usage_model,
+        parent=None,
     ):
         super().__init__(parent)
         self.record_model = record_model
@@ -27,6 +33,7 @@ class HomeWidget(QWidget):
         self.storage_model = storage_model  # Add storage model
         self.identity_model = identity_model
         self.parent_window = parent  # Reference to the parent window (LoginWindow)
+        self.usage_model = usage_model
         self.rack_widgets = {}  # Use dictionary to store rack widgets by storage id
         self.storage_data = []  # Store storage data
 
@@ -253,6 +260,7 @@ class HomeWidget(QWidget):
                 self.rack_widgets[storage_id] = RackWidget(
                     identity_model=self.identity_model,
                     storage_model=self.storage_model,
+                    usage_model=self.usage_model,
                     rack_name=storage_name,
                     parent=self,
                 )

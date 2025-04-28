@@ -25,6 +25,7 @@ class ReagentDetailPanel(QWidget):
         self.rack_name = rack_name
         self.parent_widget = parent
         self.is_new = reagent_id is None
+        self.edit_mode = self.is_new  # Edit mode enabled by default for new reagents
 
         # Set up the UI for this panel
         self._setup_ui()
@@ -33,18 +34,21 @@ class ReagentDetailPanel(QWidget):
         if not self.is_new and self.reagent_id:
             self._load_reagent_data()
 
+        # Set initial edit state
+        self._set_edit_state(self.edit_mode)
+
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
 
         # Panel title
-        title_text = "Add New Reagent" if self.is_new else "Edit Reagent Details"
-        title_label = QLabel(title_text)
+        title_text = "Add New Reagent" if self.is_new else "Reagent Details"
+        self.title_label = QLabel(title_text)
         title_font = QLabel().font()
         title_font.setPointSize(16)
         title_font.setBold(True)
-        title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(title_label)
+        self.title_label.setFont(title_font)
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(self.title_label)
 
         # Add a divider
         divider = QFrame()
@@ -122,7 +126,19 @@ class ReagentDetailPanel(QWidget):
         main_layout.addLayout(form_layout)
 
         # Buttons layout
-        buttons_layout = QHBoxLayout()
+        self.buttons_layout = QHBoxLayout()
+
+        # Edit button (only for existing reagents)
+        if not self.is_new:
+            self.edit_button = QPushButton("Edit")
+            self.edit_button.setMinimumHeight(40)
+            self.edit_button.setStyleSheet(
+                "QPushButton { background-color: #f0f0f0; border: 2px solid #c0c0c0; "
+                "border-radius: 5px; font-weight: bold; }"
+                "QPushButton:hover { background-color: #e0e0e0; }"
+            )
+            self.edit_button.clicked.connect(self._toggle_edit_mode)
+            self.buttons_layout.addWidget(self.edit_button)
 
         # Save button
         self.save_button = QPushButton("Save")
@@ -133,7 +149,7 @@ class ReagentDetailPanel(QWidget):
             "QPushButton:hover { background-color: #a3d9a3; }"
         )
         self.save_button.clicked.connect(self._save_reagent)
-        buttons_layout.addWidget(self.save_button)
+        self.buttons_layout.addWidget(self.save_button)
 
         # Delete button (only for existing reagents)
         if not self.is_new:
@@ -145,21 +161,64 @@ class ReagentDetailPanel(QWidget):
                 "QPushButton:hover { background-color: #ffaaaa; }"
             )
             self.delete_button.clicked.connect(self._delete_reagent)
-            buttons_layout.addWidget(self.delete_button)
+            self.buttons_layout.addWidget(self.delete_button)
+
+        # Usage Reports button (only for existing reagents)
+        if not self.is_new:
+            self.usage_button = QPushButton("View Usage Reports")
+            self.usage_button.setMinimumHeight(40)
+            self.usage_button.setStyleSheet(
+                "QPushButton { background-color: #ccccff; border: 2px solid #6666cc; "
+                "border-radius: 5px; font-weight: bold; }"
+                "QPushButton:hover { background-color: #a3a3d9; }"
+            )
+            self.usage_button.clicked.connect(self._show_usage_reports)
+            self.buttons_layout.addWidget(self.usage_button)
+
+        # Cancel button (only visible in edit mode)
+        if not self.is_new:
+            self.cancel_button = QPushButton("Cancel")
+            self.cancel_button.setMinimumHeight(40)
+            self.cancel_button.setStyleSheet(
+                "QPushButton { background-color: #f0f0f0; border: 2px solid #c0c0c0; "
+                "border-radius: 5px; font-weight: bold; }"
+                "QPushButton:hover { background-color: #e0e0e0; }"
+            )
+            self.cancel_button.clicked.connect(self._cancel_edit)
+            self.buttons_layout.addWidget(self.cancel_button)
 
         # Back button
         self.back_button = QPushButton("Back to Rack View")
         self.back_button.setMinimumHeight(40)
         self.back_button.clicked.connect(self._go_back)
-        buttons_layout.addWidget(self.back_button)
+        self.buttons_layout.addWidget(self.back_button)
 
         main_layout.addSpacing(20)
-        main_layout.addLayout(buttons_layout)
+        main_layout.addLayout(self.buttons_layout)
+
+        # Create a list of all input widgets for easy access when toggling edit mode
+        self.input_widgets = [
+            self.name_edit,
+            self.description_edit,
+            self.wujud_combo,
+            self.stock_spin,
+            self.massa_spin,
+            self.expire_date_edit,
+            self.hazard_combo,
+            self.sifat_edit,
+            self.prod_date_edit,
+            self.purchase_date_edit,
+            self.sds_edit,
+        ]
 
     def _load_reagent_data(self):
         """Load data for an existing reagent"""
         # In a real implementation, fetch from database using self.identity_model
         reagent = self.identity_model.get_by_id(self.reagent_id)
+
+        self.original_data = (
+            reagent.copy() if reagent else {}
+        )  # Store original data for cancel functionality
 
         if reagent:
             self.name_edit.setText(reagent.get("Name", ""))
@@ -199,6 +258,47 @@ class ReagentDetailPanel(QWidget):
 
             self.sds_edit.setText(reagent.get("SDS", ""))
 
+    def _toggle_edit_mode(self):
+        """Toggle between view and edit modes"""
+        self.edit_mode = not self.edit_mode
+        self._set_edit_state(self.edit_mode)
+
+        # Update title based on mode
+        if self.edit_mode:
+            self.title_label.setText("Edit Reagent Details")
+        else:
+            self.title_label.setText("Reagent Details")
+
+    def _set_edit_state(self, editable):
+        """Set the edit state of all input widgets"""
+        for widget in self.input_widgets:
+            if isinstance(widget, QLineEdit) or isinstance(widget, QTextEdit):
+                widget.setReadOnly(not editable)
+                # Apply style to indicate read-only state
+                if not editable:
+                    widget.setStyleSheet("background-color: #f0f0f0;")
+                else:
+                    widget.setStyleSheet("")
+            elif (
+                isinstance(widget, QComboBox)
+                or isinstance(widget, QSpinBox)
+                or isinstance(widget, QDateEdit)
+            ):
+                widget.setEnabled(editable)
+
+        # Update button visibility based on mode
+        if not self.is_new:
+            self.edit_button.setVisible(not editable)
+            self.save_button.setVisible(editable)
+            self.delete_button.setVisible(True)  # Always visible
+            self.usage_button.setVisible(True)  # Always visible
+            self.cancel_button.setVisible(editable)
+        else:
+            # For new reagents, save button is always visible
+            self.save_button.setVisible(True)
+            if hasattr(self, "cancel_button"):
+                self.cancel_button.setVisible(False)
+
     def _save_reagent(self):
         """Save the reagent data"""
         # Collect data from form fields
@@ -236,16 +336,29 @@ class ReagentDetailPanel(QWidget):
                     id_storage=reagent_data["id_storage"],
                 )
                 success_message = "New reagent added successfully"
+                # Save new reagent ID for potential usage reports
+                if result and isinstance(result, int):
+                    self.reagent_id = result
+                    self.is_new = False
             else:
                 # Update existing reagent
                 result = self.identity_model.update(self.reagent_id, **reagent_data)
                 success_message = "Reagent updated successfully"
+                # Exit edit mode after successful update
+                self.edit_mode = False
+                self._set_edit_state(False)
+                self.title_label.setText("Reagent Details")
 
             if result:
                 QMessageBox.information(self, "Success", success_message)
-                # Return to rack view after successful save
-                if self.parent_widget and hasattr(
-                    self.parent_widget, "refresh_reagents"
+                # Update original data after successful save
+                if not self.is_new:
+                    self.original_data = reagent_data.copy()
+                # Return to rack view after successful save for new reagents
+                if (
+                    self.is_new
+                    and self.parent_widget
+                    and hasattr(self.parent_widget, "refresh_reagents")
                 ):
                     self.parent_widget.refresh_reagents()
                     self.parent_widget.show_rack_view()
@@ -254,6 +367,17 @@ class ReagentDetailPanel(QWidget):
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
+
+    def _cancel_edit(self):
+        """Cancel editing and revert to original data"""
+        if not self.is_new and hasattr(self, "original_data"):
+            # Revert back to original data
+            self._load_reagent_data()
+
+        # Exit edit mode
+        self.edit_mode = False
+        self._set_edit_state(False)
+        self.title_label.setText("Reagent Details")
 
     def _delete_reagent(self):
         """Delete the current reagent"""
@@ -284,6 +408,23 @@ class ReagentDetailPanel(QWidget):
 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
+
+    def _show_usage_reports(self):
+        """Show usage reports for this reagent"""
+        if not self.is_new and self.reagent_id:
+            if self.parent_widget and hasattr(self.parent_widget, "show_usage_reports"):
+                reagent_name = self.name_edit.text()
+                self.parent_widget.show_usage_reports(self.reagent_id, reagent_name)
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Not Implemented",
+                    "The parent widget does not have a show_usage_reports method.",
+                )
+        else:
+            QMessageBox.warning(
+                self, "Error", "Please save the reagent before viewing usage reports."
+            )
 
     def _go_back(self):
         """Return to the rack view without saving"""

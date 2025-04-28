@@ -5,6 +5,7 @@ from models.record_model import RecordModel
 from models.storage_model import StorageModel
 from models.user_model import UserModel
 from models.database import DatabaseManager
+from models.usage_model import UsageModel
 from views.login_window import LoginWindow
 
 
@@ -17,6 +18,7 @@ def main():
     record_model = RecordModel(db)
     storage_model = StorageModel(db)
     identity_model = IdentityModel(db)
+    usage_model = UsageModel(db)
 
     # You can log in with these test credentials:
     # Username: admin, Password: admin123
