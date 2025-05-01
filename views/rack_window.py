@@ -317,10 +317,11 @@ class RackWidget(QWidget):
             # For this to work, you'll need to import the UsageReportPanel
             from views.usage_report_panel import UsageReportPanel
 
-            # # You'll also need a reference to the usage model
-            # from models.usage_model import UsageModel  # Adjust path as needed
-            #
-            # usage_model = UsageModel()  # Instantiate the usage model
+            # Use the passed model if provided, otherwise fall back to self.usage_model
+            model_to_use = self.usage_model
+            print(
+                f"[DEBUG] Final usage model before panel: {model_to_use}"
+            )  # Should show the model
 
             # Create the usage report panel
             self.usage_panel = UsageReportPanel(
@@ -337,4 +338,52 @@ class RackWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(
                 self, "Error", f"Failed to show usage reports: {str(e)}"
+            )
+
+    def show_new_usage_report_panel(self, reagent_id, reagent_name):
+        """Show panel for adding a new usage report"""
+        try:
+            # Import the UsageEditPanel
+            from views.usage_edit_panel import UsageEditPanel
+
+            # Create the edit panel with no usage_id (for new report)
+            self.usage_edit_panel = UsageEditPanel(
+                usage_model=self.usage_model,
+                identity_model=self.identity_model,
+                reagent_id=reagent_id,
+                reagent_name=reagent_name,
+                usage_id=None,  # None indicates a new usage report
+                parent=self,
+            )
+
+            # Add to stack and switch to it
+            self.main_stack.addWidget(self.usage_edit_panel)
+            self.main_stack.setCurrentWidget(self.usage_edit_panel)
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error", f"Failed to show usage edit panel: {str(e)}"
+            )
+
+    def show_edit_usage_report_panel(self, usage_id, reagent_id, reagent_name):
+        """Show panel for editing an existing usage report"""
+        try:
+            # Import the UsageEditPanel
+            from views.usage_edit_panel import UsageEditPanel
+
+            # Create the edit panel with the specified usage_id
+            self.usage_edit_panel = UsageEditPanel(
+                usage_model=self.usage_model,
+                identity_model=self.identity_model,
+                reagent_id=reagent_id,
+                reagent_name=reagent_name,
+                usage_id=usage_id,  # Provide the ID of the usage report to edit
+                parent=self,
+            )
+
+            # Add to stack and switch to it
+            self.main_stack.addWidget(self.usage_edit_panel)
+            self.main_stack.setCurrentWidget(self.usage_edit_panel)
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error", f"Failed to show usage edit panel: {str(e)}"
             )

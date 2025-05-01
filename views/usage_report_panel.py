@@ -93,6 +93,10 @@ class UsageReportPanel(QWidget):
     def _load_usage_data(self):
         """Load usage data for the current reagent"""
         try:
+            print(
+                f"[DEBUG] Usage model in _load_usage_data: {self.usage_model}"
+            )  # Debug
+            print(f"[DEBUG] Reagent ID: {self.reagent_id}")  # Debug
             usage_reports = self.usage_model.get_by_identity(self.reagent_id)
 
             # Clear the table
@@ -162,24 +166,46 @@ class UsageReportPanel(QWidget):
 
     def _add_new_report(self):
         """Open panel to add a new usage report"""
-        if self.parent_widget and hasattr(
-            self.parent_widget, "show_new_usage_report_panel"
-        ):
-            self.parent_widget.show_new_usage_report_panel(
-                self.reagent_id, self.reagent_name
+        try:
+            if self.parent_widget and hasattr(
+                self.parent_widget, "show_new_usage_report_panel"
+            ):
+                self.parent_widget.show_new_usage_report_panel(
+                    self.reagent_id, self.reagent_name
+                )
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Function Not Available",
+                    "The show_new_usage_report_panel function is not available in the parent widget.",
+                )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error", f"Failed to open new usage report panel: {str(e)}"
             )
 
     def _edit_report(self):
         """Edit the selected usage report"""
-        button = self.sender()
-        if button:
-            report_id = button.property("report_id")
-            if self.parent_widget and hasattr(
-                self.parent_widget, "show_edit_usage_report_panel"
-            ):
-                self.parent_widget.show_edit_usage_report_panel(
-                    report_id, self.reagent_id, self.reagent_name
-                )
+        try:
+            button = self.sender()
+            if button:
+                report_id = button.property("report_id")
+                if self.parent_widget and hasattr(
+                    self.parent_widget, "show_edit_usage_report_panel"
+                ):
+                    self.parent_widget.show_edit_usage_report_panel(
+                        report_id, self.reagent_id, self.reagent_name
+                    )
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "Function Not Available",
+                        "The show_edit_usage_report_panel function is not available in the parent widget.",
+                    )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error", f"Failed to open edit usage report panel: {str(e)}"
+            )
 
     def _delete_report(self):
         """Delete the selected usage report"""

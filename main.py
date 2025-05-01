@@ -28,7 +28,7 @@ def main():
     # Initialize login window with required models
     login_window = LoginWindow(user_model)
     login_window.setup_models(
-        record_model, user_model, storage_model, identity_model
+        record_model, user_model, storage_model, identity_model, usage_model
     )  # Make sure login window has both models
     login_window.show()
 
