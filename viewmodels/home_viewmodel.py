@@ -103,24 +103,6 @@ class HomeViewModel(QObject):
 
         return self.rack_viewmodels[storage_id].create_rack_view(self.home_view)
 
-    def view_reagent_details(self, reagent_id):
-        """Logic to display reagent details screen"""
-        # This would be implemented to coordinate with your navigation service
-        # or controller to display the reagent details screen
-        pass
-
-    def show_new_usage_report(self, reagent_id, reagent_name):
-        """Logic to display new usage report screen"""
-        # This would be implemented to coordinate with your navigation service
-        # or controller to display the new usage report screen
-        pass
-
-    def show_edit_usage_report(self, report_id, reagent_id, reagent_name):
-        """Logic to display edit usage report screen"""
-        # This would be implemented to coordinate with your navigation service
-        # or controller to display the edit usage report screen
-        pass
-
     def logout(self):
         """Logout the current user"""
         if self.home_view and self.home_view.parent_window:
