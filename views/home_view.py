@@ -1,4 +1,4 @@
-# Updated views/home_view.py with search functionality
+# Updated views/home_view.py with search bar instead of button
 from PyQt6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -9,6 +9,8 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QMessageBox,
     QStackedWidget,
+    QLineEdit,
+    QComboBox,
 )
 from PyQt6.QtCore import Qt, pyqtSlot
 
@@ -78,49 +80,48 @@ class HomeView(QWidget):
         main_layout.addWidget(divider)
         main_layout.addSpacing(20)
 
-        # Subtitle for main modules
-        modules_label = QLabel("Main Modules:")
-        modules_font = QLabel().font()
-        modules_font.setPointSize(12)
-        modules_label.setFont(modules_font)
-        modules_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(modules_label)
+        # Search bar section
+        search_label = QLabel("Search Reagents:")
+        search_font = QLabel().font()
+        search_font.setPointSize(12)
+        search_label.setFont(search_font)
+        main_layout.addWidget(search_label)
 
-        # Buttons for navigation
-        buttons_layout = QHBoxLayout()
-        buttons_layout.setSpacing(20)
+        # Search bar layout
+        search_layout = QHBoxLayout()
+        search_layout.setSpacing(10)
 
-        # Record Manager Button
-        self.db_button = QPushButton("Record Manager")
-        self.db_button.setMinimumHeight(60)
-        self.db_button.setMinimumWidth(180)
-        self.db_button.clicked.connect(self._show_record_manager)
-        buttons_layout.addWidget(self.db_button)
+        # Search input field
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Enter search term...")
+        self.search_input.setMinimumHeight(40)
+        self.search_input.returnPressed.connect(self._perform_search)
+        search_layout.addWidget(self.search_input, 3)
 
-        # User Management Button
-        self.user_button = QPushButton("User Management")
-        self.user_button.setMinimumHeight(60)
-        self.user_button.setMinimumWidth(180)
-        self.user_button.clicked.connect(self._show_user_management)
-        buttons_layout.addWidget(self.user_button)
+        # Search by field dropdown
+        self.search_field = QComboBox()
+        self.search_field.setMinimumHeight(40)
+        self.search_field.addItems(
+            ["All Fields", "Name", "Description", "Wujud", "Category_Hazard", "Sifat"]
+        )
+        search_layout.addWidget(self.search_field, 1)
 
-        # Search Button - New addition
-        self.search_button = QPushButton("Search Reagents")
-        self.search_button.setMinimumHeight(60)
-        self.search_button.setMinimumWidth(180)
+        # Search button
+        self.search_button = QPushButton("Search")
+        self.search_button.setMinimumHeight(40)
         self.search_button.setStyleSheet(
             "QPushButton { background-color: #e6ccff; border: 2px solid #cc99ff; border-radius: 8px; }"
             "QPushButton:hover { background-color: #d9b3ff; }"
         )
-        self.search_button.clicked.connect(self._show_search)
-        buttons_layout.addWidget(self.search_button)
+        self.search_button.clicked.connect(self._perform_search)
+        search_layout.addWidget(self.search_button)
 
-        main_layout.addLayout(buttons_layout)
-        main_layout.addSpacing(30)
+        main_layout.addLayout(search_layout)
+        main_layout.addSpacing(20)
 
         # Storage/Rack label
         rack_label = QLabel("Reagent Storage:")
-        rack_label.setFont(modules_font)
+        rack_label.setFont(search_font)
         main_layout.addWidget(rack_label, alignment=Qt.AlignmentFlag.AlignLeft)
 
         # Storage/rack buttons in grid layout
@@ -168,15 +169,33 @@ class HomeView(QWidget):
 
         main_layout.addLayout(bottom_buttons_layout)
 
-    def _show_record_manager(self):
-        """Show the record manager widget"""
-        if self.home_viewmodel:
-            self.home_viewmodel.show_record_manager()
+    def _perform_search(self):
+        """Execute search based on current input"""
+        if not self.home_viewmodel:
+            return
 
-    def _show_user_management(self):
-        """Show the user management widget"""
-        if self.home_viewmodel:
-            self.home_viewmodel.show_user_management()
+        search_term = self.search_input.text().strip()
+        search_field = self.search_field.currentText()
+
+        # Don't search if term is too short (unless cleared)
+        if len(search_term) < 2 and search_term != "":
+            return
+
+        # First show the search view
+        self._show_search()
+
+        # Then perform the search with the current terms
+        if (
+            hasattr(self.parent_window, "search_widget")
+            and self.parent_window.search_widget
+        ):
+            search_view = self.parent_window.search_widget
+            if hasattr(search_view, "search_input"):
+                search_view.search_input.setText(search_term)
+            if hasattr(search_view, "search_field"):
+                index = search_view.search_field.findText(search_field)
+                if index >= 0:
+                    search_view.search_field.setCurrentIndex(index)
 
     def _show_search(self):
         """Show the search widget"""
