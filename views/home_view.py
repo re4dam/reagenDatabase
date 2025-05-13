@@ -1,4 +1,4 @@
-# views/home_view.py
+# Updated views/home_view.py with search functionality
 from PyQt6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -104,6 +104,17 @@ class HomeView(QWidget):
         self.user_button.clicked.connect(self._show_user_management)
         buttons_layout.addWidget(self.user_button)
 
+        # Search Button - New addition
+        self.search_button = QPushButton("Search Reagents")
+        self.search_button.setMinimumHeight(60)
+        self.search_button.setMinimumWidth(180)
+        self.search_button.setStyleSheet(
+            "QPushButton { background-color: #e6ccff; border: 2px solid #cc99ff; border-radius: 8px; }"
+            "QPushButton:hover { background-color: #d9b3ff; }"
+        )
+        self.search_button.clicked.connect(self._show_search)
+        buttons_layout.addWidget(self.search_button)
+
         main_layout.addLayout(buttons_layout)
         main_layout.addSpacing(30)
 
@@ -166,6 +177,11 @@ class HomeView(QWidget):
         """Show the user management widget"""
         if self.home_viewmodel:
             self.home_viewmodel.show_user_management()
+
+    def _show_search(self):
+        """Show the search widget"""
+        if self.home_viewmodel:
+            self.home_viewmodel.show_search()
 
     def _show_rack(self, storage_id, storage_name):
         """Show a specific rack widget"""

@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSlot, QSize
 from PyQt6.QtGui import QPixmap, QIcon
 
+
 class LoginView(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -63,7 +64,7 @@ class LoginView(QMainWindow):
         container_layout.setContentsMargins(0, 0, 0, 0)
 
         ## Elemen layer ##
-        #Background
+        # Background
         background_label = QLabel(container)
         background_label.setPixmap(QPixmap("assets/login/Login.png"))
         background_label.setScaledContents(True)
@@ -75,35 +76,35 @@ class LoginView(QMainWindow):
         panel_label.setScaledContents(True)
         panel_label.setGeometry(54, 23, 1812, 1012)
         panel_label.raise_()  # put it on top of background
-        
-        #Logo
+
+        # Logo
         logo = QLabel(container)
         logo.setPixmap(QPixmap("assets/logo.png"))
         logo.setScaledContents(True)
         logo.setGeometry(85, 50, 673, 93)
         logo.raise_()
 
-        #Tulisan Login
+        # Tulisan Login
         login_text = QLabel(container)
         login_text.setPixmap(QPixmap("assets/login/LoginText.png"))
         login_text.setScaledContents(True)
         login_text.setGeometry(397, 232, 211, 51)
         login_text.raise_()
 
-        #Tulisan Selamat Datang
+        # Tulisan Selamat Datang
         Welcome = QLabel(container)
         Welcome.setPixmap(QPixmap("assets/login/selamat_datang.png"))
         Welcome.setScaledContents(True)
         Welcome.setGeometry(85, 352, 425, 52)
         Welcome.raise_()
 
-        #Username
+        # Username
         username = QLabel(container)
         username.setPixmap(QPixmap("assets/login/username.png"))
         username.setScaledContents(True)
         username.setGeometry(85, 445, 174, 28)
         username.raise_()
-        
+
         self.username_input = QLineEdit(container)
         self.username_input.setPlaceholderText("Masukkan username")
         self.username_input.setStyleSheet("""
@@ -122,7 +123,7 @@ class LoginView(QMainWindow):
         self.username_input.setGeometry(85, 493, 843, 74)
         self.username_input.raise_()
 
-        #Password
+        # Password
         password = QLabel(container)
         password.setPixmap(QPixmap("assets/login/password.png"))
         password.setScaledContents(True)
@@ -181,7 +182,7 @@ class LoginView(QMainWindow):
         register.setGeometry(500, 752, 420, 26)
         register.raise_()
 
-        #Login
+        # Login
         login_toggle = QPushButton(container)
         login_toggle.setIconSize(QSize(745, 68))
         login_toggle.setStyleSheet("""
@@ -205,7 +206,7 @@ class LoginView(QMainWindow):
 
         # Tambah widget ke layout utama
         layout.addWidget(container)
-        
+
     def eyeClicked(self):
         if self.password_input.echoMode() == QLineEdit.EchoMode.Password:
             self.toggle_password_btn.setIcon(QIcon("assets/Login/icon_eye2.png"))
@@ -213,7 +214,7 @@ class LoginView(QMainWindow):
         else:
             self.toggle_password_btn.setIcon(QIcon("assets/Login/icon_eye.png"))
             self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        
+
     def _login(self):
         """Handle login button click"""
         if not self.login_viewmodel:
@@ -225,7 +226,9 @@ class LoginView(QMainWindow):
 
         # Validasi input sederhana
         if not username or not password:
-            QMessageBox.warning(self, "Login Failed", "Username dan password tidak boleh kosong")
+            QMessageBox.warning(
+                self, "Login Failed", "Username dan password tidak boleh kosong"
+            )
             return
 
         # Gunakan ViewModel untuk autentikasi
@@ -265,3 +268,8 @@ class LoginView(QMainWindow):
 
         # Switch to login widget
         self.stacked_widget.setCurrentWidget(self.login_widget)
+
+    def show_home(self):
+        """Switch to the home widget if it exists"""
+        if self.home_widget and self.stacked_widget:
+            self.stacked_widget.setCurrentWidget(self.home_widget)

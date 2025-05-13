@@ -21,6 +21,7 @@ class HomeViewModel(QObject):
         self.home_view = None
         self.record_viewmodel = None
         self.user_viewmodel = None
+        self.search_viewmodel = None
         self.rack_viewmodels = {}
 
     def create_home_view(self, parent_window):
@@ -83,6 +84,21 @@ class HomeViewModel(QObject):
             self.user_viewmodel = UserViewModel(self.user_model)
 
         return self.user_viewmodel.create_user_view(self.home_view)
+
+    def show_search(self):
+        """Show the search view"""
+        if not self.home_view or not self.home_view.parent_window:
+            return False
+
+        # Initialize search viewmodel if needed
+        if not self.search_viewmodel:
+            from viewmodels.search_viewmodel import SearchViewModel
+
+            self.search_viewmodel = SearchViewModel(
+                self.identity_model, self.storage_model
+            )
+
+        return self.search_viewmodel.create_search_view(self.home_view.parent_window)
 
     def show_rack(self, storage_id, storage_name):
         """Show a specific rack view"""
