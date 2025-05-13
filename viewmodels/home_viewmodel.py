@@ -10,7 +10,13 @@ class HomeViewModel(QObject):
     storage_error = pyqtSignal(str)
 
     def __init__(
-        self, record_model, user_model, storage_model, identity_model, usage_model
+        self,
+        record_model,
+        user_model,
+        storage_model,
+        identity_model,
+        usage_model,
+        supporting_materials_model,
     ):
         super().__init__()
         self.record_model = record_model
@@ -18,6 +24,7 @@ class HomeViewModel(QObject):
         self.storage_model = storage_model
         self.identity_model = identity_model
         self.usage_model = usage_model
+        self.supporting_materials_model = supporting_materials_model
         self.home_view = None
         self.search_viewmodel = None
         self.rack_viewmodels = {}
@@ -84,6 +91,7 @@ class HomeViewModel(QObject):
             self.identity_model,
             self.storage_model,
             self.usage_model,
+            self.supporting_materials_model,
             storage_id,
             storage_name,
         )

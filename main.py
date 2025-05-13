@@ -3,6 +3,7 @@ import sys
 from PyQt6.QtWidgets import QApplication
 
 # Import views
+from models import supporting_materials_model
 from views.login_view import LoginView
 
 # Import viewmodels
@@ -17,6 +18,7 @@ from models.record_model import RecordModel
 from models.storage_model import StorageModel
 from models.identity_model import IdentityModel
 from models.usage_model import UsageModel
+from models.supporting_materials_model import SupportingMaterialsModel
 
 
 def main():
@@ -29,12 +31,18 @@ def main():
     storage_model = StorageModel(db)
     identity_model = IdentityModel(db)
     usage_model = UsageModel(db)
+    supporting_materials_model = SupportingMaterialsModel(db)
 
     # Initialize ViewModels
     login_viewmodel = LoginViewModel(user_model)
     register_viewmodel = RegisterViewModel(user_model)
     home_viewmodel = HomeViewModel(
-        record_model, user_model, storage_model, identity_model, usage_model
+        record_model,
+        user_model,
+        storage_model,
+        identity_model,
+        usage_model,
+        supporting_materials_model,
     )
 
     # Initialize the main Login view

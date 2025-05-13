@@ -5,12 +5,12 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QLabel,
     QLineEdit,
-    QTextEdit,
     QPushButton,
     QDateEdit,
     QSpinBox,
     QFrame,
     QMessageBox,
+    QComboBox,
 )
 from PyQt6.QtCore import Qt, pyqtSlot, QDate
 from PyQt6.QtGui import QFont
@@ -65,10 +65,12 @@ class UsageEditView(QWidget):
         self.user_edit = QLineEdit()
         form_layout.addRow("User:", self.user_edit)
 
-        # Supporting materials field
-        self.supporting_materials_edit = QTextEdit()
-        self.supporting_materials_edit.setMaximumHeight(100)
-        form_layout.addRow("Supporting Materials:", self.supporting_materials_edit)
+        # Supporting materials field (now a combo box)
+        self.supporting_materials_combo = QComboBox()
+        self.supporting_materials_combo.setEditable(True)
+        self.supporting_materials_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.supporting_materials_combo.setMinimumHeight(30)
+        form_layout.addRow("Supporting Materials:", self.supporting_materials_combo)
 
         main_layout.addLayout(form_layout)
 
@@ -103,8 +105,8 @@ class UsageEditView(QWidget):
         main_layout.addSpacing(20)
         main_layout.addLayout(buttons_layout)
 
-    @pyqtSlot(dict, bool, int)
-    def on_usage_loaded(self, usage_data, is_new, current_stock):
+    @pyqtSlot(dict, bool, int, list)
+    def on_usage_loaded(self, usage_data, is_new, current_stock, supporting_materials):
         """Update UI with usage data"""
         self.title_label.setText(
             f"{'Add New' if is_new else 'Edit'} Usage Report for {usage_data.get('ReagentName', '')}"
@@ -117,7 +119,21 @@ class UsageEditView(QWidget):
 
         self.amount_used_spin.setValue(usage_data.get("Jumlah_Terpakai", 1))
         self.user_edit.setText(usage_data.get("User", ""))
-        self.supporting_materials_edit.setText(usage_data.get("Bahan_Pendukung", ""))
+
+        # Populate supporting materials dropdown
+        self.supporting_materials_combo.clear()
+        self.supporting_materials_combo.addItem("-- Select or type new --", None)
+        for material in supporting_materials:
+            self.supporting_materials_combo.addItem(material["name"], material["id"])
+
+        # Set current value if exists
+        current_material = usage_data.get("Bahan_Pendukung", "")
+        if current_material:
+            index = self.supporting_materials_combo.findText(current_material)
+            if index >= 0:
+                self.supporting_materials_combo.setCurrentIndex(index)
+            else:
+                self.supporting_materials_combo.setEditText(current_material)
 
         self.current_stock_label.setText(f"Current Stock: {current_stock}")
         self._check_stock_level()
@@ -140,11 +156,16 @@ class UsageEditView(QWidget):
     def _save_usage(self):
         """Save usage data"""
         if self.usage_edit_viewmodel:
+            # Get supporting material text (either selected or entered)
+            supporting_material = self.supporting_materials_combo.currentText()
+            if supporting_material == "-- Select or type new --":
+                supporting_material = ""
+
             data = {
                 "Tanggal_Terpakai": self.date_used_edit.date().toString("yyyy-MM-dd"),
                 "Jumlah_Terpakai": self.amount_used_spin.value(),
                 "User": self.user_edit.text(),
-                "Bahan_Pendukung": self.supporting_materials_edit.toPlainText(),
+                "Bahan_Pendukung": supporting_material,
             }
             self.usage_edit_viewmodel.save_usage(data)
 

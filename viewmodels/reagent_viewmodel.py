@@ -161,18 +161,25 @@ class ReagentViewModel:
 
         try:
             # Extract storage ID from specific rack name patterns
-            storage_map = {"Lemari 1": 1, "Lemari 2": 2, "Lemari 3": 3, "Lemari 4": 4}
+            storage_map = {
+                "Lemari Reagen A": 1,
+                "Lemari Reagen B": 2,
+                "Lemari Reagen C": 3,
+                "Lemari Reagen D": 4,
+            }
 
             # Exact match first
             if self.rack_name in storage_map:
                 return storage_map[self.rack_name]
 
-            # If no exact match, try to extract number
-            match = re.search(r"Lemari\s*(\d+)", self.rack_name)
+            # If no exact match, try to extract letter
+            match = re.search(r"Lemari\s*Reagen\s*([A-D])", self.rack_name)
             if match:
-                lemari_num = int(match.group(1))
-                if 1 <= lemari_num <= 4:
-                    return lemari_num
+                letter = match.group(1)
+                # Map letter to number (A=1, B=2, C=3, D=4)
+                letter_map = {"A": 1, "B": 2, "C": 3, "D": 4}
+                if letter in letter_map:
+                    return letter_map[letter]
 
             # Fallback to default
             return 1

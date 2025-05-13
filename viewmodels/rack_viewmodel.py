@@ -5,12 +5,19 @@ class RackViewModel(QObject):
     reagents_loaded = pyqtSignal(list, str)  # reagents, rack_name
 
     def __init__(
-        self, identity_model, storage_model, usage_model, storage_id, storage_name
+        self,
+        identity_model,
+        storage_model,
+        usage_model,
+        supporting_materials_model,
+        storage_id,
+        storage_name,
     ):
         super().__init__()
         self.identity_model = identity_model
         self.storage_model = storage_model
         self.usage_model = usage_model
+        self.supporting_materials_model = supporting_materials_model
         self.storage_id = storage_id
         self.storage_name = storage_name
         self.rack_view = None
@@ -130,6 +137,7 @@ class RackViewModel(QObject):
         usage_viewmodel = UsageEditViewModel(
             usage_model=self.usage_model,
             identity_model=self.identity_model,
+            supporting_materials_model=self.supporting_materials_model,
             reagent_id=reagent_id,
             reagent_name=reagent_name,
             usage_id=None,  # None indicates new report
@@ -149,6 +157,7 @@ class RackViewModel(QObject):
         usage_viewmodel = UsageEditViewModel(
             usage_model=self.usage_model,
             identity_model=self.identity_model,
+            supporting_materials_model=self.supporting_materials_model,
             reagent_id=reagent_id,
             reagent_name=reagent_name,
             usage_id=report_id,  # Existing report ID
