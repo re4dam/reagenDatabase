@@ -1,5 +1,4 @@
-# Updated ReagentViewModel with proper parameter case handling
-
+# viewmodels/reagent_viewmodel.py
 import re
 
 
@@ -24,6 +23,8 @@ class ReagentViewModel:
         self.is_new = reagent_id is None
         self.edit_mode = self.is_new  # Edit mode enabled by default for new reagents
         self.temp_image_data = None
+        self.temp_sds_data = None
+        self.temp_sds_filename = None
 
         # Load existing reagent data if applicable
         self.original_data = {}
@@ -109,6 +110,7 @@ class ReagentViewModel:
             "Tanggal_Produksi": "tanggal_produksi",
             "Tanggal_Pembelian": "tanggal_pembelian",
             "SDS": "sds",
+            "SDS_Filename": "sds_filename",
             "id_storage": "id_storage",
             "Image": "image",
         }
@@ -146,6 +148,11 @@ class ReagentViewModel:
 
     def cancel_edit(self):
         """Cancel editing and revert to original state"""
+        # Reset temporary data
+        self.temp_image_data = None
+        self.temp_sds_data = None
+        self.temp_sds_filename = None
+
         # Just exit edit mode, the view will reload the original data
         self.edit_mode = False
 
@@ -231,3 +238,83 @@ class ReagentViewModel:
                 return self.identity_model.get_image(self.reagent_id)
 
         return None
+
+    def update_sds(self, sds_data, sds_filename):
+        """
+        Set SDS data to be saved with the reagent
+
+        Args:
+            sds_data: Binary PDF data
+            sds_filename: Original filename of the PDF
+
+        Returns:
+            tuple: (success_bool, message_string)
+        """
+        self.temp_sds_data = sds_data
+        self.temp_sds_filename = sds_filename
+
+        # If we're updating an existing reagent and not in edit mode (direct SDS update)
+        if not self.is_new and not self.edit_mode and self.reagent_id:
+            try:
+                result = self.identity_model.update_sds(
+                    self.reagent_id, sds_data, sds_filename
+                )
+                if result:
+                    # Update original data with new SDS
+                    if self.original_data:
+                        self.original_data["SDS"] = sds_data
+                        self.original_data["SDS_Filename"] = sds_filename
+                    return True, "SDS updated successfully"
+                else:
+                    return False, "Failed to update SDS"
+            except Exception as e:
+                return False, f"Error updating SDS: {str(e)}"
+
+        return True, "SDS will be saved with reagent data"
+
+    def get_sds(self):
+        """
+        Get the SDS data for this reagent
+
+        Returns:
+            dict: Dictionary containing SDS data and filename if available, None otherwise
+        """
+        # If we have temp SDS data, use that
+        if hasattr(self, "temp_sds_data") and self.temp_sds_data:
+            return {
+                "data": self.temp_sds_data,
+                "filename": self.temp_sds_filename or "safety_data_sheet.pdf",
+            }
+
+        # Otherwise, if we have an existing reagent, fetch from model
+        if not self.is_new and self.reagent_id:
+            return self.identity_model.get_sds(self.reagent_id)
+
+        return None
+
+    def clear_sds(self):
+        """
+        Clear the current SDS data
+
+        Returns:
+            tuple: (success_bool, message_string)
+        """
+        self.temp_sds_data = None
+        self.temp_sds_filename = None
+
+        # If we're updating an existing reagent directly
+        if not self.is_new and self.reagent_id:
+            try:
+                result = self.identity_model.update_sds(self.reagent_id, None, None)
+                if result:
+                    # Update original data
+                    if self.original_data:
+                        self.original_data["SDS"] = None
+                        self.original_data["SDS_Filename"] = None
+                    return True, "SDS cleared successfully"
+                else:
+                    return False, "Failed to clear SDS"
+            except Exception as e:
+                return False, f"Error clearing SDS: {str(e)}"
+
+        return True, "SDS will be cleared when reagent is saved"

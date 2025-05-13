@@ -129,9 +129,38 @@ class ReagentDetailPanel(QWidget):
         self.purchase_date_edit.setDate(QDate.currentDate())  # Default today
         form_layout.addRow("Purchase Date:", self.purchase_date_edit)
 
-        # SDS field
-        self.sds_edit = QLineEdit()
-        form_layout.addRow("SDS Reference:", self.sds_edit)
+        # SDS field - Modified to include SDS handling buttons
+        sds_widget = QWidget()
+        sds_layout = QHBoxLayout(sds_widget)
+        sds_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.sds_status_label = QLabel("No SDS file")
+        self.sds_status_label.setStyleSheet("font-style: italic; color: #666;")
+
+        self.view_sds_button = QPushButton("View")
+        self.view_sds_button.setFixedWidth(60)
+        self.view_sds_button.clicked.connect(self._view_sds)
+
+        sds_layout.addWidget(self.sds_status_label, 1)  # 1 is stretch factor
+        sds_layout.addWidget(self.view_sds_button)
+
+        form_layout.addRow("Safety Data Sheet:", sds_widget)
+
+        # SDS Upload/Clear buttons
+        sds_buttons_widget = QWidget()
+        sds_buttons_layout = QHBoxLayout(sds_buttons_widget)
+        sds_buttons_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.upload_sds_button = QPushButton("Upload SDS")
+        self.upload_sds_button.clicked.connect(self._upload_sds)
+
+        self.clear_sds_button = QPushButton("Clear SDS")
+        self.clear_sds_button.clicked.connect(self._clear_sds)
+
+        sds_buttons_layout.addWidget(self.upload_sds_button)
+        sds_buttons_layout.addWidget(self.clear_sds_button)
+
+        form_layout.addRow("", sds_buttons_widget)
 
         # Storage ID field - will be set based on the rack_name
         self.storage_id_label = QLabel(f"Storage: {self.view_model.rack_name}")
@@ -259,11 +288,14 @@ class ReagentDetailPanel(QWidget):
             self.sifat_edit,
             self.prod_date_edit,
             self.purchase_date_edit,
-            self.sds_edit,
         ]
 
         # Current image data
         self.current_image_data = None
+
+        # Current SDS data
+        self.current_sds_data = None
+        self.current_sds_filename = None
 
     def _load_reagent_data(self):
         """Load data for an existing reagent from the ViewModel"""
@@ -305,10 +337,11 @@ class ReagentDetailPanel(QWidget):
                     QDate.fromString(reagent["Tanggal_Pembelian"], "yyyy-MM-dd")
                 )
 
-            self.sds_edit.setText(reagent.get("SDS", ""))
-
             # Load image if available
             self._load_image()
+
+            # Load SDS if available
+            self._load_sds()
 
     def _load_image(self):
         """Load image from ViewModel and display it"""
@@ -336,6 +369,36 @@ class ReagentDetailPanel(QWidget):
             print(f"Error loading image: {str(e)}")
             self.image_label.setText("Error loading image")
             self.current_image_data = None
+
+    def _load_sds(self):
+        """Load SDS data from ViewModel and update UI accordingly"""
+        try:
+            sds_info = self.view_model.get_sds()
+            if sds_info and sds_info.get("data"):
+                self.current_sds_data = sds_info["data"]
+                self.current_sds_filename = sds_info["filename"]
+
+                # Update the SDS status label
+                self.sds_status_label.setText(self.current_sds_filename)
+                self.sds_status_label.setStyleSheet(
+                    "font-weight: bold; color: #0066cc;"
+                )
+                self.view_sds_button.setEnabled(True)
+            else:
+                # No SDS data available
+                self.sds_status_label.setText("No SDS file")
+                self.sds_status_label.setStyleSheet("font-style: italic; color: #666;")
+                self.view_sds_button.setEnabled(False)
+                self.current_sds_data = None
+                self.current_sds_filename = None
+
+        except Exception as e:
+            print(f"Error loading SDS data: {str(e)}")
+            self.sds_status_label.setText("Error loading SDS")
+            self.sds_status_label.setStyleSheet("color: #cc0000;")
+            self.view_sds_button.setEnabled(False)
+            self.current_sds_data = None
+            self.current_sds_filename = None
 
     def _upload_image(self):
         """Open file dialog to select an image"""
@@ -387,6 +450,122 @@ class ReagentDetailPanel(QWidget):
         # Update in viewmodel
         self.view_model.update_image(None)
 
+    def _upload_sds(self):
+        """Open file dialog to select a PDF file for SDS"""
+        if not self.view_model.edit_mode and not self.view_model.is_new:
+            QMessageBox.warning(
+                self, "Warning", "Please enter edit mode to change the SDS file."
+            )
+            return
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Safety Data Sheet (PDF)",
+            "",
+            "PDF Files (*.pdf);;All Files (*)",
+        )
+
+        if file_path:
+            try:
+                with open(file_path, "rb") as file:
+                    sds_data = file.read()
+
+                # Get the filename from the path
+                import os
+
+                sds_filename = os.path.basename(file_path)
+
+                # Store SDS data
+                self.current_sds_data = sds_data
+                self.current_sds_filename = sds_filename
+
+                # Update in viewmodel
+                result, message = self.view_model.update_sds(sds_data, sds_filename)
+
+                # Update the UI
+                if result:
+                    self.sds_status_label.setText(sds_filename)
+                    self.sds_status_label.setStyleSheet(
+                        "font-weight: bold; color: #0066cc;"
+                    )
+                    self.view_sds_button.setEnabled(True)
+                else:
+                    QMessageBox.warning(self, "Warning", message)
+
+            except Exception as e:
+                QMessageBox.critical(
+                    self, "Error", f"Failed to load SDS file: {str(e)}"
+                )
+
+    def _clear_sds(self):
+        """Clear the current SDS file"""
+        if not self.view_model.edit_mode and not self.view_model.is_new:
+            QMessageBox.warning(
+                self, "Warning", "Please enter edit mode to clear the SDS file."
+            )
+            return
+
+        # Confirm with user
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Clear SDS",
+            "Are you sure you want to remove the Safety Data Sheet?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if confirm == QMessageBox.StandardButton.Yes:
+            # Clear SDS data
+            self.current_sds_data = None
+            self.current_sds_filename = None
+
+            # Update the UI
+            self.sds_status_label.setText("No SDS file")
+            self.sds_status_label.setStyleSheet("font-style: italic; color: #666;")
+            self.view_sds_button.setEnabled(False)
+
+            # Update in viewmodel
+            result, message = self.view_model.clear_sds()
+
+            if not result:
+                QMessageBox.warning(self, "Warning", message)
+
+    def _view_sds(self):
+        """View the SDS file using system's default PDF viewer"""
+        if not self.current_sds_data:
+            QMessageBox.information(
+                self, "Information", "No SDS file available for this reagent."
+            )
+            return
+
+        try:
+            # Create a temporary file to view the PDF
+            import tempfile
+            import os
+            import subprocess
+            import platform
+
+            # Create a temp file with the correct extension
+            fd, temp_path = tempfile.mkstemp(suffix=".pdf")
+            os.close(fd)
+
+            # Write the PDF data to the temp file
+            with open(temp_path, "wb") as f:
+                f.write(self.current_sds_data)
+
+            # Open the PDF with the default system viewer
+            if platform.system() == "Darwin":  # macOS
+                subprocess.run(["open", temp_path], check=True)
+            elif platform.system() == "Windows":
+                os.startfile(temp_path)
+            else:  # Linux and other Unix-like
+                subprocess.run(["xdg-open", temp_path], check=True)
+
+            # Note: The temp file will remain until the application exits or the OS cleans it up
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to open SDS file: {str(e)}")
+
     def _toggle_edit_mode(self):
         """Toggle between view and edit modes"""
         self.view_model.toggle_edit_mode()
@@ -419,6 +598,10 @@ class ReagentDetailPanel(QWidget):
         self.upload_image_button.setEnabled(editable)
         self.clear_image_button.setEnabled(editable)
 
+        # Set SDS controls edit state
+        self.upload_sds_button.setEnabled(editable)
+        self.clear_sds_button.setEnabled(editable)
+
         # Defensive checks for button visibility
         if not self.view_model.is_new:
             if hasattr(self, "edit_button"):
@@ -448,12 +631,16 @@ class ReagentDetailPanel(QWidget):
             "Sifat": self.sifat_edit.toPlainText(),
             "Tanggal_Produksi": self.prod_date_edit.date().toString("yyyy-MM-dd"),
             "Tanggal_Pembelian": self.purchase_date_edit.date().toString("yyyy-MM-dd"),
-            "SDS": self.sds_edit.text(),
         }
 
         # Add image data if available
         if self.current_image_data is not None:
             form_data["Image"] = self.current_image_data
+
+        # Add SDS data if available
+        if self.current_sds_data is not None:
+            form_data["SDS"] = self.current_sds_data
+            form_data["SDS_Filename"] = self.current_sds_filename
 
         return form_data
 
