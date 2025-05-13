@@ -13,10 +13,13 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QMessageBox,
     QFrame,
+    QFileDialog,
 )
 from PyQt6.QtCore import Qt, QDate, pyqtSignal
+from PyQt6.QtGui import QPixmap, QImage
 
 from viewmodels.reagent_viewmodel import ReagentViewModel
+import io
 
 
 class ReagentDetailPanel(QWidget):
@@ -64,8 +67,12 @@ class ReagentDetailPanel(QWidget):
         main_layout.addWidget(divider)
         main_layout.addSpacing(10)
 
-        # Form layout for reagent details
-        form_layout = QFormLayout()
+        # Main content layout (form on left, image on right)
+        content_layout = QHBoxLayout()
+
+        # Left side - Form layout for reagent details
+        form_container = QWidget()
+        form_layout = QFormLayout(form_container)
         form_layout.setSpacing(10)
 
         # Name field
@@ -130,7 +137,44 @@ class ReagentDetailPanel(QWidget):
         self.storage_id_label = QLabel(f"Storage: {self.view_model.rack_name}")
         form_layout.addRow("Storage Location:", self.storage_id_label)
 
-        main_layout.addLayout(form_layout)
+        # Add form container to content layout
+        content_layout.addWidget(form_container, 3)  # 3:1 proportion for form:image
+
+        # Right side - Image display and controls
+        image_container = QWidget()
+        image_container_layout = QVBoxLayout(image_container)
+
+        # Image display (now bigger)
+        self.image_label = QLabel()
+        self.image_label.setMinimumSize(250, 250)  # Larger size for the image
+        self.image_label.setMaximumWidth(300)  # Limit max width
+        self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_label.setStyleSheet(
+            "border: 1px solid #cccccc; background-color: #f9f9f9;"
+        )
+        self.image_label.setText("No Image")
+        image_container_layout.addWidget(self.image_label)
+
+        # Image buttons in horizontal layout
+        image_buttons_layout = QHBoxLayout()
+
+        self.upload_image_button = QPushButton("Upload Image")
+        self.upload_image_button.clicked.connect(self._upload_image)
+        image_buttons_layout.addWidget(self.upload_image_button)
+
+        self.clear_image_button = QPushButton("Clear Image")
+        self.clear_image_button.clicked.connect(self._clear_image)
+        image_buttons_layout.addWidget(self.clear_image_button)
+
+        image_container_layout.addLayout(image_buttons_layout)
+        image_container_layout.addStretch()  # Push image and buttons to the top
+
+        # Add image container to content layout
+        content_layout.addWidget(image_container, 1)  # 3:1 proportion for form:image
+
+        # Add content layout to main layout
+        main_layout.addLayout(content_layout)
+        main_layout.addSpacing(10)
 
         # Buttons layout
         self.buttons_layout = QHBoxLayout()
@@ -218,6 +262,9 @@ class ReagentDetailPanel(QWidget):
             self.sds_edit,
         ]
 
+        # Current image data
+        self.current_image_data = None
+
     def _load_reagent_data(self):
         """Load data for an existing reagent from the ViewModel"""
         reagent = self.view_model.get_reagent_data()
@@ -260,6 +307,86 @@ class ReagentDetailPanel(QWidget):
 
             self.sds_edit.setText(reagent.get("SDS", ""))
 
+            # Load image if available
+            self._load_image()
+
+    def _load_image(self):
+        """Load image from ViewModel and display it"""
+        try:
+            image_data = self.view_model.get_image()
+            if image_data:
+                self.current_image_data = image_data
+                image = QImage.fromData(image_data)
+                if not image.isNull():
+                    pixmap = QPixmap.fromImage(image)
+                    scaled_pixmap = pixmap.scaled(
+                        self.image_label.size(),
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                    self.image_label.setPixmap(scaled_pixmap)
+                    return
+
+            # If no image or invalid image data
+            self.image_label.setText("No Image")
+            self.image_label.setPixmap(QPixmap())
+            self.current_image_data = None
+
+        except Exception as e:
+            print(f"Error loading image: {str(e)}")
+            self.image_label.setText("Error loading image")
+            self.current_image_data = None
+
+    def _upload_image(self):
+        """Open file dialog to select an image"""
+        if not self.view_model.edit_mode and not self.view_model.is_new:
+            QMessageBox.warning(
+                self, "Warning", "Please enter edit mode to change the image."
+            )
+            return
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Image",
+            "",
+            "Image Files (*.png *.jpg *.jpeg *.bmp);;All Files (*)",
+        )
+
+        if file_path:
+            try:
+                with open(file_path, "rb") as file:
+                    image_data = file.read()
+
+                # Store image data and update display
+                self.current_image_data = image_data
+
+                # Update in viewmodel
+                result, message = self.view_model.update_image(image_data)
+
+                # Update the UI
+                self._load_image()
+
+                if not result:
+                    QMessageBox.warning(self, "Warning", message)
+
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to load image: {str(e)}")
+
+    def _clear_image(self):
+        """Clear the current image"""
+        if not self.view_model.edit_mode and not self.view_model.is_new:
+            QMessageBox.warning(
+                self, "Warning", "Please enter edit mode to clear the image."
+            )
+            return
+
+        self.current_image_data = None
+        self.image_label.setText("No Image")
+        self.image_label.setPixmap(QPixmap())
+
+        # Update in viewmodel
+        self.view_model.update_image(None)
+
     def _toggle_edit_mode(self):
         """Toggle between view and edit modes"""
         self.view_model.toggle_edit_mode()
@@ -288,7 +415,11 @@ class ReagentDetailPanel(QWidget):
             ):
                 widget.setEnabled(editable)
 
-        # Defensive checks
+        # Set image controls edit state
+        self.upload_image_button.setEnabled(editable)
+        self.clear_image_button.setEnabled(editable)
+
+        # Defensive checks for button visibility
         if not self.view_model.is_new:
             if hasattr(self, "edit_button"):
                 self.edit_button.setVisible(not editable)
@@ -304,34 +435,27 @@ class ReagentDetailPanel(QWidget):
             if hasattr(self, "cancel_button"):
                 self.cancel_button.setVisible(False)
 
-        # # Update button visibility based on mode
-        # if not self.view_model.is_new:
-        #     self.edit_button.setVisible(not editable)
-        #     self.save_button.setVisible(editable)
-        #     self.delete_button.setVisible(True)  # Always visible
-        #     self.usage_button.setVisible(True)  # Always visible
-        #     self.cancel_button.setVisible(editable)
-        # else:
-        #     # For new reagents, save button is always visible
-        #     self.save_button.setVisible(True)
-        #     if hasattr(self, "cancel_button"):
-        #         self.cancel_button.setVisible(False)
-
     def _collect_form_data(self):
         """Collect the form data from UI elements"""
-        return {
-            "name": self.name_edit.text(),
-            "description": self.description_edit.toPlainText(),
-            "wujud": self.wujud_combo.currentText(),
-            "stock": self.stock_spin.value(),
-            "massa": self.massa_spin.value(),
-            "tanggal_expire": self.expire_date_edit.date().toString("yyyy-MM-dd"),
-            "category_hazard": self.hazard_combo.currentText(),
-            "sifat": self.sifat_edit.toPlainText(),
-            "tanggal_produksi": self.prod_date_edit.date().toString("yyyy-MM-dd"),
-            "tanggal_pembelian": self.purchase_date_edit.date().toString("yyyy-MM-dd"),
-            "sds": self.sds_edit.text(),
+        form_data = {
+            "Name": self.name_edit.text(),
+            "Description": self.description_edit.toPlainText(),
+            "Wujud": self.wujud_combo.currentText(),
+            "Stock": self.stock_spin.value(),
+            "Massa": self.massa_spin.value(),
+            "Tanggal_Expire": self.expire_date_edit.date().toString("yyyy-MM-dd"),
+            "Category_Hazard": self.hazard_combo.currentText(),
+            "Sifat": self.sifat_edit.toPlainText(),
+            "Tanggal_Produksi": self.prod_date_edit.date().toString("yyyy-MM-dd"),
+            "Tanggal_Pembelian": self.purchase_date_edit.date().toString("yyyy-MM-dd"),
+            "SDS": self.sds_edit.text(),
         }
+
+        # Add image data if available
+        if self.current_image_data is not None:
+            form_data["Image"] = self.current_image_data
+
+        return form_data
 
     def _save_reagent(self):
         """Save the reagent data"""
@@ -428,3 +552,22 @@ class ReagentDetailPanel(QWidget):
         # In case the signal isn't connected, try the legacy approach
         if self.parent_widget and hasattr(self.parent_widget, "show_rack_view"):
             self.parent_widget.show_rack_view()
+
+    def resizeEvent(self, event):
+        """Handle resize events to scale the image properly"""
+        super().resizeEvent(event)
+        if (
+            hasattr(self, "image_label")
+            and self.current_image_data
+            and self.image_label.pixmap()
+        ):
+            # Reload and rescale the image
+            image = QImage.fromData(self.current_image_data)
+            if not image.isNull():
+                pixmap = QPixmap.fromImage(image)
+                scaled_pixmap = pixmap.scaled(
+                    self.image_label.size(),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                self.image_label.setPixmap(scaled_pixmap)

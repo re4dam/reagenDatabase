@@ -1,4 +1,5 @@
-# viewmodels/reagent_viewmodel.py
+# Updated ReagentViewModel with proper parameter case handling
+
 import re
 
 
@@ -22,8 +23,7 @@ class ReagentViewModel:
         self.rack_name = rack_name
         self.is_new = reagent_id is None
         self.edit_mode = self.is_new  # Edit mode enabled by default for new reagents
-
-        print("This is ", self.rack_name)
+        self.temp_image_data = None
 
         # Load existing reagent data if applicable
         self.original_data = {}
@@ -54,16 +54,15 @@ class ReagentViewModel:
         Returns:
             tuple: (success_bool, message_string)
         """
-        # Add storage ID to the data
-        # reagent_data["id_storage"] = self._get_storage_id_from_rack_name()
-        reagent_data["id_storage"] = self.rack_name
-        print("Testing for once ", self.rack_name)
-        print("Testing for twice ", reagent_data["id_storage"])
+        # Convert rack name to storage ID
+        reagent_data["id_storage"] = self._get_storage_id_from_rack_name()
+        # print("Saving reagent data " + str(reagent_data))
 
         try:
             if self.is_new:
-                # Create new reagent
-                result = self.identity_model.create(**reagent_data)
+                # Create new reagent - convert parameter names to lowercase
+                lowercase_data = self._convert_keys_to_lowercase(reagent_data)
+                result = self.identity_model.create(**lowercase_data)
 
                 if result and isinstance(result, int):
                     self.reagent_id = result
@@ -86,6 +85,43 @@ class ReagentViewModel:
 
         except Exception as e:
             return False, f"Error: {str(e)}"
+
+    def _convert_keys_to_lowercase(self, data_dict):
+        """
+        Convert dictionary keys to lowercase for compatibility with model methods
+
+        Args:
+            data_dict: Dictionary with mixed-case keys
+
+        Returns:
+            dict: Dictionary with lowercase keys
+        """
+        # Define mapping between capitalized DB column names and lowercase model parameters
+        key_mapping = {
+            "Name": "name",
+            "Description": "description",
+            "Wujud": "wujud",
+            "Stock": "stock",
+            "Massa": "massa",
+            "Tanggal_Expire": "tanggal_expire",
+            "Category_Hazard": "category_hazard",
+            "Sifat": "sifat",
+            "Tanggal_Produksi": "tanggal_produksi",
+            "Tanggal_Pembelian": "tanggal_pembelian",
+            "SDS": "sds",
+            "id_storage": "id_storage",
+            "Image": "image",
+        }
+
+        result = {}
+        for key, value in data_dict.items():
+            if key in key_mapping:
+                result[key_mapping[key]] = value
+            else:
+                # Keep the key as is if not in mapping
+                result[key] = value
+
+        return result
 
     def delete_reagent(self):
         """
@@ -124,11 +160,67 @@ class ReagentViewModel:
             return 1
 
         try:
-            # Extract any numeric part from the rack name
-            match = re.search(r"\d+", self.rack_name)
+            # Extract storage ID from specific rack name patterns
+            storage_map = {"Lemari 1": 1, "Lemari 2": 2, "Lemari 3": 3, "Lemari 4": 4}
+
+            # Exact match first
+            if self.rack_name in storage_map:
+                return storage_map[self.rack_name]
+
+            # If no exact match, try to extract number
+            match = re.search(r"Lemari\s*(\d+)", self.rack_name)
             if match:
-                return int(match.group())
-            else:
-                return 1
+                lemari_num = int(match.group(1))
+                if 1 <= lemari_num <= 4:
+                    return lemari_num
+
+            # Fallback to default
+            return 1
         except:
             return 1
+
+    def update_image(self, image_data):
+        """
+        Set image data to be saved with the reagent
+
+        Args:
+            image_data: Binary image data
+        """
+        self.temp_image_data = image_data
+
+        # If we're updating an existing reagent and not in edit mode (direct image update)
+        if not self.is_new and not self.edit_mode and self.reagent_id:
+            try:
+                result = self.identity_model.update_image(self.reagent_id, image_data)
+                if result:
+                    # Update original data with new image
+                    if self.original_data:
+                        self.original_data["Image"] = image_data
+                    return True, "Image updated successfully"
+                else:
+                    return False, "Failed to update image"
+            except Exception as e:
+                return False, f"Error updating image: {str(e)}"
+
+        return True, "Image will be saved with reagent data"
+
+    def get_image(self):
+        """
+        Get the image data for this reagent
+
+        Returns:
+            bytes: Image data if available, None otherwise
+        """
+        # If we have temp image data, use that
+        if hasattr(self, "temp_image_data") and self.temp_image_data:
+            return self.temp_image_data
+
+        # Otherwise, if we have an existing reagent, fetch from model
+        if not self.is_new and self.reagent_id:
+            if "Image" in self.original_data and self.original_data["Image"]:
+                return self.original_data["Image"]
+            else:
+                # Fetch directly from database in case it wasn't loaded with initial data
+                return self.identity_model.get_image(self.reagent_id)
+
+        return None
