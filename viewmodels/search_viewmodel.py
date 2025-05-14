@@ -9,10 +9,16 @@ class SearchViewModel(QObject):
     search_results = pyqtSignal(list)
     search_error = pyqtSignal(str)
 
-    def __init__(self, identity_model, storage_model):
+    def __init__(
+        self, identity_model, storage_model, usage_model=None, supporting_model=None
+    ):
         super().__init__()
         self.identity_model = identity_model
         self.storage_model = storage_model
+        self.usage_model = usage_model  # Add usage model reference
+        self.supporting_model = (
+            supporting_model  # Add supporting materials model reference
+        )
         self.search_view = None
         self.rack_viewmodels = {}
 
@@ -113,7 +119,8 @@ class SearchViewModel(QObject):
             self.rack_viewmodels[storage_id] = RackViewModel(
                 self.identity_model,
                 self.storage_model,
-                None,  # Usage model not needed for viewing details
+                self.usage_model,  # Pass usage model
+                self.supporting_model,  # Pass supporting materials model
                 storage_id,
                 storage_name,
             )

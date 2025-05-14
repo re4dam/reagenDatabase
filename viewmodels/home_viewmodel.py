@@ -74,7 +74,10 @@ class HomeViewModel(QObject):
             from viewmodels.search_viewmodel import SearchViewModel
 
             self.search_viewmodel = SearchViewModel(
-                self.identity_model, self.storage_model
+                self.identity_model,
+                self.storage_model,
+                self.usage_model,
+                self.supporting_materials_model,
             )
 
         return self.search_viewmodel.create_search_view(self.home_view.parent_window)
