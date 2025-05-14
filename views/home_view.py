@@ -1,4 +1,4 @@
-# Updated views/home_view.py with search bar instead of button
+# Updated views/home_view.py with About button and dialog
 from PyQt6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -11,8 +11,82 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QLineEdit,
     QComboBox,
+    QDialog,
 )
 from PyQt6.QtCore import Qt, pyqtSlot
+from PyQt6.QtGui import QFont
+
+
+class AboutDialog(QDialog):
+    """Dialog to display About information"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("About")
+        self.setFixedSize(400, 300)
+        self.setModal(True)
+
+        # Remove the ? from the title bar
+        self.setWindowFlags(
+            self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
+        )
+
+        # Main layout
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Background styling for the dialog
+        self.setStyleSheet("QDialog { background-color: #f0f0f0; }")
+
+        # Title
+        title_label = QLabel("ABOUT")
+        title_font = QFont()
+        title_font.setPointSize(18)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+
+        # Version
+        version_label = QLabel("MaSiLab V1.0")
+        version_font = QFont()
+        version_font.setPointSize(14)
+        version_font.setBold(True)
+        version_label.setFont(version_font)
+        version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(version_label)
+
+        layout.addSpacing(10)
+
+        # Credit line 1
+        credit1_label = QLabel("Created by ILKOM UPI")
+        credit1_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(credit1_label)
+
+        # Credit line 2
+        credit2_label = QLabel("in collaboration with FKUI")
+        credit2_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(credit2_label)
+
+        layout.addSpacing(20)
+
+        # Icons credit
+        icons_label = QLabel("Icons by Icons8")
+        icons_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(icons_label)
+
+        layout.addSpacing(20)
+
+        # Close button
+        close_button = QPushButton("Close")
+        close_button.setFixedWidth(100)
+        close_button.clicked.connect(self.accept)
+        close_button.setStyleSheet(
+            "QPushButton { background-color: #e6e6e6; border: 1px solid #999999; border-radius: 5px; padding: 8px; }"
+            "QPushButton:hover { background-color: #d9d9d9; }"
+        )
+        layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
 
 class HomeView(QWidget):
@@ -53,6 +127,12 @@ class HomeView(QWidget):
         main_layout = QVBoxLayout(self.main_view)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        # Header layout with title and About button
+        header_layout = QHBoxLayout()
+
+        # Title container
+        title_container = QVBoxLayout()
+
         # Title
         title_label = QLabel("Sistem Manajemen Reagen Laboratorium")
         title_font = QLabel().font()
@@ -60,7 +140,7 @@ class HomeView(QWidget):
         title_font.setBold(True)
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(title_label)
+        title_container.addWidget(title_label)
 
         # Next Title
         next_title_label = QLabel(
@@ -71,7 +151,30 @@ class HomeView(QWidget):
         next_title_font.setBold(True)
         next_title_label.setFont(title_font)
         next_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(next_title_label)
+        title_container.addWidget(next_title_label)
+
+        header_layout.addLayout(title_container, 7)
+
+        # About button (in header)
+        about_container = QVBoxLayout()
+        about_container.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
+        )
+
+        self.about_button = QPushButton("About")
+        self.about_button.setFixedSize(100, 40)
+        self.about_button.setStyleSheet(
+            "QPushButton { background-color: #dddddd; border: 2px solid #bbbbbb; "
+            "border-radius: 5px; font-weight: bold; }"
+            "QPushButton:hover { background-color: #cccccc; }"
+        )
+        self.about_button.clicked.connect(self._show_about_dialog)
+        about_container.addWidget(self.about_button)
+        about_container.addStretch()
+
+        header_layout.addLayout(about_container, 1)
+
+        main_layout.addLayout(header_layout)
 
         # Add a divider
         divider = QFrame()
@@ -168,6 +271,11 @@ class HomeView(QWidget):
         bottom_buttons_layout.addWidget(self.exit_button)
 
         main_layout.addLayout(bottom_buttons_layout)
+
+    def _show_about_dialog(self):
+        """Show the About dialog"""
+        about_dialog = AboutDialog(self)
+        about_dialog.exec()
 
     def _perform_search(self):
         """Execute search based on current input"""
