@@ -1,4 +1,4 @@
-# Updated views/home_view.py with About button and dialog
+# Updated views/home_view.py with About button and dialog, plus UserProfileDialog
 from PyQt6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -15,6 +15,117 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QFont
+
+
+class UserProfileDialog(QDialog):
+    """Dialog to display user profile information"""
+
+    def __init__(self, parent=None, user_data=None):
+        super().__init__(parent)
+        self.setWindowTitle("User Profile")
+        self.setFixedSize(400, 350)
+        self.setModal(True)
+
+        # Remove the ? from the title bar
+        self.setWindowFlags(
+            self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
+        )
+
+        # Main layout
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Background styling for the dialog
+        self.setStyleSheet("QDialog { background-color: #f0f0f0; }")
+
+        # Title
+        title_label = QLabel("USER PROFILE")
+        title_font = QFont()
+        title_font.setPointSize(18)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+
+        layout.addSpacing(20)
+
+        # Container for user data
+        user_data_layout = QVBoxLayout()
+        user_data_layout.setSpacing(10)
+        user_data_layout.setContentsMargins(20, 0, 20, 0)
+
+        # Create a frame to hold the user data
+        user_data_frame = QFrame()
+        user_data_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        user_data_frame.setStyleSheet(
+            "QFrame { background-color: #ffffff; border-radius: 8px; padding: 10px; border: 1px solid #dddddd; }"
+        )
+        user_data_frame.setLayout(user_data_layout)
+
+        # Username (if user_data is provided)
+        username_layout = QHBoxLayout()
+        username_label = QLabel("Username:")
+        username_label.setFont(QFont("", 12, QFont.Weight.Bold))
+        username_value = QLabel(
+            user_data.get("username", "N/A") if user_data else "N/A"
+        )
+        username_value.setFont(QFont("", 12))
+        username_layout.addWidget(username_label)
+        username_layout.addWidget(username_value, 1)
+        user_data_layout.addLayout(username_layout)
+
+        # Add a divider line
+        divider1 = QFrame()
+        divider1.setFrameShape(QFrame.Shape.HLine)
+        divider1.setFrameShadow(QFrame.Shadow.Sunken)
+        divider1.setStyleSheet("background-color: #dddddd;")
+        user_data_layout.addWidget(divider1)
+
+        # First Name
+        first_name_layout = QHBoxLayout()
+        first_name_label = QLabel("First Name:")
+        first_name_label.setFont(QFont("", 12, QFont.Weight.Bold))
+        first_name_value = QLabel(
+            user_data.get("first_name", "N/A") if user_data else "N/A"
+        )
+        first_name_value.setFont(QFont("", 12))
+        first_name_layout.addWidget(first_name_label)
+        first_name_layout.addWidget(first_name_value, 1)
+        user_data_layout.addLayout(first_name_layout)
+
+        # Add a divider line
+        divider2 = QFrame()
+        divider2.setFrameShape(QFrame.Shape.HLine)
+        divider2.setFrameShadow(QFrame.Shadow.Sunken)
+        divider2.setStyleSheet("background-color: #dddddd;")
+        user_data_layout.addWidget(divider2)
+
+        # Last Name
+        last_name_layout = QHBoxLayout()
+        last_name_label = QLabel("Last Name:")
+        last_name_label.setFont(QFont("", 12, QFont.Weight.Bold))
+        last_name_value = QLabel(
+            user_data.get("last_name", "N/A") if user_data else "N/A"
+        )
+        last_name_value.setFont(QFont("", 12))
+        last_name_layout.addWidget(last_name_label)
+        last_name_layout.addWidget(last_name_value, 1)
+        user_data_layout.addLayout(last_name_layout)
+
+        layout.addWidget(user_data_frame)
+
+        layout.addSpacing(20)
+
+        # Close button
+        close_button = QPushButton("Close")
+        close_button.setFixedWidth(100)
+        close_button.clicked.connect(self.accept)
+        close_button.setStyleSheet(
+            "QPushButton { background-color: #e6e6e6; border: 1px solid #999999; border-radius: 5px; padding: 8px; }"
+            "QPushButton:hover { background-color: #d9d9d9; }"
+        )
+        layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
 
 class AboutDialog(QDialog):
@@ -97,6 +208,7 @@ class HomeView(QWidget):
         self.storage_data = []
         self.rack_buttons = []
         self.rack_views = {}
+        self.current_user = None
 
         # Create stacked widget for views
         self.stacked_widget = QStackedWidget(self)
@@ -122,12 +234,16 @@ class HomeView(QWidget):
         """Set the ViewModel for this view"""
         self.home_viewmodel = viewmodel
 
+    def set_user_data(self, user_data):
+        """Set the current user's data"""
+        self.current_user = user_data
+
     def _setup_main_ui(self):
         """Set up the UI components for the home page"""
         main_layout = QVBoxLayout(self.main_view)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Header layout with title and About button
+        # Header layout with title, User Profile button, and About button
         header_layout = QHBoxLayout()
 
         # Title container
@@ -155,12 +271,25 @@ class HomeView(QWidget):
 
         header_layout.addLayout(title_container, 7)
 
-        # About button (in header)
-        about_container = QVBoxLayout()
-        about_container.setAlignment(
+        # Buttons container (for User Profile and About)
+        buttons_container = QVBoxLayout()
+        buttons_container.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
         )
+        buttons_container.setSpacing(10)
 
+        # User Profile button
+        self.user_profile_button = QPushButton("User Profile")
+        self.user_profile_button.setFixedSize(100, 40)
+        self.user_profile_button.setStyleSheet(
+            "QPushButton { background-color: #ccffee; border: 2px solid #99ddcc; "
+            "border-radius: 5px; font-weight: bold; }"
+            "QPushButton:hover { background-color: #aaeedd; }"
+        )
+        self.user_profile_button.clicked.connect(self._show_user_profile_dialog)
+        buttons_container.addWidget(self.user_profile_button)
+
+        # About button
         self.about_button = QPushButton("About")
         self.about_button.setFixedSize(100, 40)
         self.about_button.setStyleSheet(
@@ -169,10 +298,11 @@ class HomeView(QWidget):
             "QPushButton:hover { background-color: #cccccc; }"
         )
         self.about_button.clicked.connect(self._show_about_dialog)
-        about_container.addWidget(self.about_button)
-        about_container.addStretch()
+        buttons_container.addWidget(self.about_button)
 
-        header_layout.addLayout(about_container, 1)
+        buttons_container.addStretch()
+
+        header_layout.addLayout(buttons_container, 1)
 
         main_layout.addLayout(header_layout)
 
@@ -271,6 +401,21 @@ class HomeView(QWidget):
         bottom_buttons_layout.addWidget(self.exit_button)
 
         main_layout.addLayout(bottom_buttons_layout)
+
+    def _show_user_profile_dialog(self):
+        """Show the User Profile dialog"""
+        print("testing satu")
+        if self.home_viewmodel:
+            # Fetch current user data if needed
+            if not self.current_user and self.home_viewmodel.user_model:
+                # You might need to implement this method in home_viewmodel
+                # This would get the current logged-in user's data
+                print("proses mencoba mengambil current user")
+                self.current_user = self.home_viewmodel.get_current_user()
+
+        # print("ternyata langsung kesini cuy")
+        user_profile_dialog = UserProfileDialog(self, self.current_user)
+        user_profile_dialog.exec()
 
     def _show_about_dialog(self):
         """Show the About dialog"""

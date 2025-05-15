@@ -197,7 +197,6 @@ class LoginView(QMainWindow):
                 background-color: transparent;
             }
         """)
-        # Perubahan penting: Mengganti koneksi dari on_login_success ke _login
         login_toggle.clicked.connect(self._login)
         login_toggle.setGeometry(134, 940, 745, 68)
         login_toggle.raise_()
@@ -234,10 +233,14 @@ class LoginView(QMainWindow):
         # Gunakan ViewModel untuk autentikasi
         self.login_viewmodel.authenticate(username, password)
 
-    @pyqtSlot()
-    def on_login_success(self):
+    @pyqtSlot(int)  # Updated to receive user_id
+    def on_login_success(self, user_id):
         """Handle successful login"""
         try:
+            # Set the user ID in the home viewmodel
+            if self.home_viewmodel:
+                self.home_viewmodel.set_current_user_id(user_id)
+
             # Switch to home view
             if self.home_viewmodel and self.home_viewmodel.create_home_view(self):
                 # Set window title and size appropriate for main application

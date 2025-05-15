@@ -6,7 +6,7 @@ class LoginViewModel(QObject):
     """ViewModel for login functionality"""
 
     # Define signals for communication with view
-    login_succeeded = pyqtSignal()
+    login_succeeded = pyqtSignal(int)  # Now passes the user ID
     login_failed = pyqtSignal(str)
 
     def __init__(self, user_model):
@@ -26,8 +26,8 @@ class LoginViewModel(QObject):
                 self.login_failed.emit("User account is deactivated.")
                 return False
 
-            # Authentication successful
-            self.login_succeeded.emit()
+            # Authentication successful, emit with user_id
+            self.login_succeeded.emit(user["id"])
             return True
 
         except Exception as e:
