@@ -2,17 +2,26 @@ from PyQt6.QtCore import QObject, pyqtSignal, QDate
 
 
 class UsageEditViewModel(QObject):
-    usage_loaded = pyqtSignal(dict, bool, int)  # usage_data, is_new, current_stock
+    usage_loaded = pyqtSignal(
+        dict, bool, int, list
+    )  # usage_data, is_new, current_stock, supporting_materials
     error = pyqtSignal(str)
     success = pyqtSignal(str)
     stock_warning = pyqtSignal(bool, str)  # show_warning, message
 
     def __init__(
-        self, usage_model, identity_model, reagent_id, reagent_name, usage_id=None
+        self,
+        usage_model,
+        identity_model,
+        supporting_materials_model,
+        reagent_id,
+        reagent_name,
+        usage_id=None,
     ):
         super().__init__()
         self.usage_model = usage_model
         self.identity_model = identity_model
+        self.supporting_materials_model = supporting_materials_model
         self.reagent_id = reagent_id
         self.reagent_name = reagent_name
         self.usage_id = usage_id
@@ -39,20 +48,6 @@ class UsageEditViewModel(QObject):
         self.success.connect(self.usage_edit_view.on_success)
         self.stock_warning.connect(self.usage_edit_view.on_stock_warning)
 
-        # old
-        # if (
-        #     not hasattr(parent_window, "usage_edit_widget")
-        #     or not parent_window.usage_edit_widget
-        # ):
-        #     parent_window.usage_edit_widget = UsageEditView(parent_window)
-        #     parent_window.stacked_widget.addWidget(parent_window.usage_edit_widget)
-        #     self.usage_edit_view = parent_window.usage_edit_widget
-        #     self.usage_edit_view.set_viewmodel(self)
-        #     self.usage_loaded.connect(self.usage_edit_view.on_usage_loaded)
-        #     self.error.connect(self.usage_edit_view.on_error)
-        #     self.success.connect(self.usage_edit_view.on_success)
-        #     self.stock_warning.connect(self.usage_edit_view.on_stock_warning)
-
         parent_window.stacked_widget.setCurrentWidget(self.usage_edit_view)
         self.load_usage()
         return True
@@ -62,6 +57,9 @@ class UsageEditViewModel(QObject):
         try:
             reagent = self.identity_model.get_by_id(self.reagent_id)
             self.current_stock = reagent.get("Stock", 0) if reagent else 0
+
+            # Get all supporting materials
+            supporting_materials = self.supporting_materials_model.get_all()
 
             if self.is_new:
                 self.usage_loaded.emit(
@@ -74,13 +72,16 @@ class UsageEditViewModel(QObject):
                     },
                     True,
                     self.current_stock,
+                    supporting_materials,
                 )
             else:
                 usage = self.usage_model.get_by_id(self.usage_id)
                 if usage:
                     self.original_amount = usage.get("Jumlah_Terpakai", 0)
                     usage["ReagentName"] = self.reagent_name
-                    self.usage_loaded.emit(usage, False, self.current_stock)
+                    self.usage_loaded.emit(
+                        usage, False, self.current_stock, supporting_materials
+                    )
                 else:
                     self.error.emit("Usage report not found")
         except Exception as e:
@@ -117,6 +118,12 @@ class UsageEditViewModel(QObject):
                 # Warn but allow saving
                 pass
 
+            # Process supporting material - save to supporting materials model if needed
+            supporting_material = data["Bahan_Pendukung"]
+            if supporting_material:
+                # This will either create a new material or return the ID of an existing one
+                self.supporting_materials_model.create(supporting_material)
+
             if self.is_new:
                 result = self.usage_model.create(
                     tanggal_terpakai=data["Tanggal_Terpakai"],
@@ -144,24 +151,37 @@ class UsageEditViewModel(QObject):
                 self.success.emit(success_message)
                 if self.usage_edit_view and self.usage_edit_view.parent_window:
                     parent = self.usage_edit_view.parent_window
+
+                    # Find the usage report view and refresh it before showing
+                    self._refresh_usage_reports_view(parent)
+
+                    # Now show the usage reports view
                     if hasattr(parent, "show_usage_reports"):
                         parent.show_usage_reports(self.reagent_id, self.reagent_name)
+
                     # Remove the current view from the stack
                     parent.stacked_widget.removeWidget(self.usage_edit_view)
                     self.usage_edit_view.deleteLater()
                     self.usage_edit_view = None
-
-                # wait a minute
-                # if self.usage_edit_view.parent_window and hasattr(
-                #     self.usage_edit_view.parent_window, "show_usage_reports"
-                # ):
-                #     self.usage_edit_view.parent_window.show_usage_reports(
-                #         self.reagent_id, self.reagent_name
-                #     )
             else:
                 self.error.emit("Failed to save usage report")
         except Exception as e:
             self.error.emit(f"Error saving usage report: {str(e)}")
+
+    def _refresh_usage_reports_view(self, parent_window):
+        """Find and refresh the usage report view if it exists"""
+        # Look through all widgets in the stacked widget to find UsageReportView
+        if hasattr(parent_window, "stacked_widget"):
+            for i in range(parent_window.stacked_widget.count()):
+                widget = parent_window.stacked_widget.widget(i)
+                if widget.__class__.__name__ == "UsageReportView" and hasattr(
+                    widget, "reagent_id"
+                ):
+                    # Check if this is the right report view for our reagent
+                    if widget.reagent_id == self.reagent_id:
+                        # Call refresh on the view
+                        widget.refresh_data()
+                        break
 
     def cancel(self):
         """Cancel edit"""

@@ -44,15 +44,11 @@ class RegisterViewModel(QObject):
         parent_window.stacked_widget.setCurrentWidget(parent_window.register_widget)
         return True
 
-    def register_user(self, username, email, password):
+    def register_user(self, username, first_name, last_name, password):
         """Register a new user with the provided information"""
         # Input validation
-        if not username or not email or not password:
+        if not username or not first_name or not last_name or not password:
             self.registration_failed.emit("All fields are required.")
-            return False
-
-        if "@" not in email or "." not in email:
-            self.registration_failed.emit("Please enter a valid email address.")
             return False
 
         if len(password) < 6:
@@ -72,7 +68,7 @@ class RegisterViewModel(QObject):
                 return False
 
             # Create the new user
-            user_id = self.user_model.create(username, email, password_hash)
+            user_id = self.user_model.create(username, first_name, last_name, password_hash)
             if user_id:
                 self.registration_succeeded.emit()
                 return True

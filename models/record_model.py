@@ -2,7 +2,6 @@
 from models.base_model import BaseModel
 from typing import Optional, Dict, List, Any
 
-
 class RecordModel(BaseModel):
     @property
     def table_name(self):

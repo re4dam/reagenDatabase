@@ -9,11 +9,13 @@ from PyQt6.QtWidgets import (
     QFrame,
     QScrollArea,
     QStackedLayout,
+    QGraphicsDropShadowEffect,
 )
-from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import Qt, pyqtSlot, QSize
+from PyQt6.QtGui import QPixmap, QFont, QIcon, QRegion, QPainterPath, QColor
 from views.reagent_view import ReagentDetailPanel
-
+from app_context import AppContext
+from load_font import FontManager
 
 class RackView(QWidget):
     def __init__(self, parent=None):
@@ -30,92 +32,163 @@ class RackView(QWidget):
 
         # Set main layout
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addLayout(self.main_stack)
 
     def set_viewmodel(self, viewmodel):
         """Set the ViewModel for this view"""
         self.rack_viewmodel = viewmodel
+    
+    def scale_rect(self, x, y, w, h):
+        screen_size = AppContext.get_screen_resolution()
+        scale_x = screen_size.width() / 1920
+        scale_y = screen_size.height() / 1080
+        return int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)
+    
+    def scale_icon(self, w, h):
+        screen_size = AppContext.get_screen_resolution()
+        scale_x = screen_size.width() / 1920
+        scale_y = screen_size.height() / 1080
+        return int(w * scale_x), int(h * scale_y)
+    
+    def scale_style(self, px):
+        screen_size = AppContext.get_screen_resolution()
+        scale_y = screen_size.height() / 1080
+        return int(px * scale_y)
 
     def _setup_rack_ui(self):
         """Set up the UI components for the rack view"""
         # Create rack panel
         self.rack_panel = QWidget()
         rack_layout = QVBoxLayout(self.rack_panel)
+        rack_layout.setContentsMargins(0, 0, 0, 0)
+        screen_size = AppContext.get_screen_resolution()
+        
+        # Create container widget for layering
+        container = QWidget(self.rack_panel)
+        container.setGeometry(0, 0, screen_size.width(), screen_size.height())
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Background layer - Lab image
+        background_label = QLabel(container)
+        background_label.setPixmap(QPixmap("assets/Rack/background.png"))  # Use your actual image path
+        background_label.setScaledContents(True)
+        background_label.setGeometry(0, 0, screen_size.width(), screen_size.height())
+        background_label.lower()
+
+        # Drop Shadow
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(4)
+        shadow.setOffset(5, 7)
+        shadow.setColor(QColor(0, 0, 0, 165))
 
         # Title
-        title_label = QLabel()
+        title_label = QLabel(container)
         self.rack_title = title_label  # Will be updated when data loads
-        title_font = QFont()
-        title_font.setPointSize(18)
-        title_font.setBold(True)
-        title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        rack_layout.addWidget(title_label)
+        title_label.setGeometry(0, 0, screen_size.width(), 132)
+        title_label.setFont(FontManager.get_font("PlusJakartaSans-Regular", 60))
+        title_label.setStyleSheet("""
+            QLabel{
+                font-weight: bold;
+                color: white;         
+            }
+        """)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        title_label.setGraphicsEffect(shadow)
+        title_label.raise_()
 
-        # Divider
-        divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setFrameShadow(QFrame.Shadow.Sunken)
-        rack_layout.addWidget(divider)
-        rack_layout.addSpacing(10)
-
-        # Add reagent button
-        add_button_layout = QHBoxLayout()
-        add_button_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
-
-        self.add_reagent_button = QPushButton("+ Add New Reagent")
-        self.add_reagent_button.setMinimumHeight(40)
-        self.add_reagent_button.setMinimumWidth(150)
-        self.add_reagent_button.setStyleSheet(
-            "QPushButton { background-color: #ccffcc; border: 2px solid #66cc66; border-radius: 5px; font-weight: bold; }"
-            "QPushButton:hover { background-color: #a3d9a3; }"
-        )
-        self.add_reagent_button.clicked.connect(self._add_new_reagent)
-        add_button_layout.addWidget(self.add_reagent_button)
-        rack_layout.addLayout(add_button_layout)
-        rack_layout.addSpacing(10)
+        # Foreground
+        foreground = QLabel(container)
+        foreground.setPixmap(QPixmap("assets/Rack/foreground.png"))  # Use your actual image path
+        foreground.setScaledContents(True)
+        foreground.setGeometry(*self.scale_rect(89, 140, 1742, 861))
+        foreground.raise_()
 
         # Scrollable grid
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
+        scroll_area = QScrollArea(container)
         self.scroll_content = QWidget()
         self.grid_layout = QGridLayout(self.scroll_content)
         self.grid_layout.setSpacing(10)
         scroll_area.setWidget(self.scroll_content)
-        rack_layout.addWidget(scroll_area)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setGeometry(*self.scale_rect(89, 140, 1742, 861))
+        scroll_area.setStyleSheet("border: none; background: transparent;")
+        scroll_area.raise_()
 
-        # Navigation
-        nav_layout = QHBoxLayout()
-        nav_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.add_reagent_button = QPushButton(container)
+        add_normal = QIcon("assets/Rack/add.png")
+        add_hover = QIcon("assets/Rack/add_hover.png")
+        self.add_reagent_button.setIcon(add_normal)
+        self.add_reagent_button.setIconSize(QSize(*self.scale_icon(174, 174)))
+        self.add_reagent_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background: transparent;
+            }
+        """)
+        self.add_reagent_button.setGeometry(*self.scale_rect(1722, 865, 174, 174))
+        self.add_reagent_button.enterEvent = lambda event: self.add_reagent_button.setIcon(add_hover)
+        self.add_reagent_button.leaveEvent = lambda event: self.add_reagent_button.setIcon(add_normal)
+        self.add_reagent_button.clicked.connect(self._add_new_reagent)
+        self.add_reagent_button.raise_()
 
-        self.prev_button = QPushButton("◀ Previous")
-        self.prev_button.setMinimumHeight(40)
+        self.prev_button = QPushButton(container)
+        icon_prev = QIcon("assets/Rack/back.png")
+        self.prev_button.setIcon(icon_prev)
+        self.prev_button.setIconSize(QSize(*self.scale_icon(57, 88)))
+        self.prev_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+            }
+        """)
         self.prev_button.clicked.connect(self._go_to_previous_page)
-        nav_layout.addWidget(self.prev_button)
+        self.prev_button.setGeometry(*self.scale_rect(13, 525, 57, 88))
+        self.prev_button.raise_()
 
-        self.page_label = QLabel("Page 1")
+        self.page_label = QLabel(container)
+        self.page_label.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.page_label.setStyleSheet("font-weight: bold; color: white;")
         self.page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.page_label.setMinimumWidth(100)
-        nav_layout.addWidget(self.page_label)
+        self.page_label.setFixedSize(QSize(*self.scale_icon(150, 150)))
+        self.page_label.move(940, 885)
+        self.page_label.raise_()
 
-        self.next_button = QPushButton("Next ▶")
-        self.next_button.setMinimumHeight(40)
+        self.next_button = QPushButton(container)
+        icon_next = QIcon("assets/Rack/next.png")
+        self.next_button.setIcon(icon_next)
+        self.next_button.setIconSize(QSize(*self.scale_icon(57, 88)))
+        self.next_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+            }
+        """)
         self.next_button.clicked.connect(self._go_to_next_page)
-        nav_layout.addWidget(self.next_button)
-        rack_layout.addLayout(nav_layout)
-        rack_layout.addSpacing(10)
+        self.next_button.setGeometry(*self.scale_rect(1848, 525, 57, 88))
+        self.next_button.raise_()
 
-        # Back button
-        back_layout = QHBoxLayout()
-        back_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-        self.back_button = QPushButton("Back to Home")
-        self.back_button.setMinimumHeight(40)
-        self.back_button.setMinimumWidth(120)
+        # Add circular back button in top-left corner
+        self.back_button = QPushButton(container)
+        back_normal = QIcon("assets/Rack/icon_back.png")
+        back_hover = QIcon("assets/Rack/back_hover.png")
+        self.back_button.setIcon(back_normal)
+        self.back_button.setIconSize(QSize(*self.scale_icon(130, 130)))
+        self.back_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+            }
+        """)
+        # Perubahan penting: Mengganti koneksi dari on_login_success ke _login
+        self.back_button.setGeometry(*self.scale_rect(12, 12, 130, 130))
+        self.back_button.enterEvent = lambda event: self.back_button.setIcon(back_hover)
+        self.back_button.leaveEvent = lambda event: self.back_button.setIcon(back_normal)
         self.back_button.clicked.connect(self._go_back)
-        back_layout.addWidget(self.back_button)
-        rack_layout.addLayout(back_layout)
+        self.back_button.raise_()
 
+        rack_layout.addWidget(container)
         # Add rack panel to stack
         self.main_stack.addWidget(self.rack_panel)
 
@@ -123,7 +196,7 @@ class RackView(QWidget):
     def on_reagents_loaded(self, reagents, rack_name):
         """Handle loaded reagents data"""
         self.reagents = reagents
-        self.rack_title.setText(f"{rack_name} - Reagent Management")
+        self.rack_title.setText(f"{rack_name}")
         self.current_page = 0
         self._load_current_page()
 
@@ -156,7 +229,7 @@ class RackView(QWidget):
             relative_idx = i - start_idx
             self.grid_layout.addWidget(button, relative_idx // 5, relative_idx % 5)
 
-        self.page_label.setText(f"Page {self.current_page + 1}/{self._total_pages()}")
+        self.page_label.setText(f"{self.current_page + 1} / {self._total_pages()}")
         self._update_navigation_buttons()
 
     def _get_button_style_for_hazard(self, hazard_category):

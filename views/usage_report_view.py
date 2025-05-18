@@ -11,9 +11,11 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QMessageBox,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSlot, pyqtSignal, QSize
+from PyQt6.QtGui import QPixmap, QIcon
 from viewmodels.usage_report_viewmodel import UsageReportViewModel
-
+from app_context import AppContext
+from load_font import FontManager
 
 class UsageReportView(QWidget):
     # Signals to communicate with parent
@@ -42,63 +44,128 @@ class UsageReportView(QWidget):
         # Load initial data
         self.refresh_data()
 
+    def scale_rect(self, x, y, w, h):
+        screen_size = AppContext.get_screen_resolution()
+        scale_x = screen_size.width() / 1920
+        scale_y = screen_size.height() / 1080
+        return int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)
+    
+    def scale_icon(self, w, h):
+        screen_size = AppContext.get_screen_resolution()
+        scale_x = screen_size.width() / 1920
+        scale_y = screen_size.height() / 1080
+        return int(w * scale_x), int(h * scale_y)
+    
+    def scale_style(self, px):
+        screen_size = AppContext.get_screen_resolution()
+        scale_y = screen_size.height() / 1080
+        return int(px * scale_y)
+    
     def _setup_ui(self):
+        self.screen_size = AppContext.get_screen_resolution()
+        self.setGeometry(0, 0, self.screen_size.width(), self.screen_size.height())
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Panel title
-        title_label = QLabel(f"Usage Reports for {self.reagent_name}")
-        title_font = QLabel().font()
-        title_font.setPointSize(16)
-        title_font.setBold(True)
-        title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(title_label)
+        background_label = QLabel(self)
+        background_label.setPixmap(QPixmap("assets/Report/background.png"))  # Use your actual image path
+        background_label.setScaledContents(True)
+        background_label.setGeometry(*self.scale_rect(0, 0, 1920, 1080))
 
-        # Add a divider
-        divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setFrameShadow(QFrame.Shadow.Sunken)
-        main_layout.addWidget(divider)
-        main_layout.addSpacing(10)
+        report_bg = QLabel(self)
+        report_bg.setPixmap(QPixmap("assets/report/report.png"))  # Use your actual image path
+        report_bg.setScaledContents(True)
+        report_bg.setGeometry(*self.scale_rect(89, 172, 1742, 830))
 
         # Table for displaying usage reports
-        self.table_widget = QTableWidget()
+        self.table_widget = QTableWidget(self)
         self.table_widget.setColumnCount(5)
         self.table_widget.setHorizontalHeaderLabels(
-            ["Date Used", "Amount Used", "User", "Supporting Materials", "Actions"]
+            ["Date Used", "Amount Used", "User", "Supporting\nMaterials", "Actions"]
         )
         self.table_widget.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
         self.table_widget.verticalHeader().setVisible(False)
-        self.table_widget.setAlternatingRowColors(True)
-        self.table_widget.setStyleSheet(
-            "QTableWidget { gridline-color: #d0d0d0; alternate-background-color: #f0f0f0; }"
+        self.table_widget.setShowGrid(False)
+        self.table_widget.setStyleSheet("""
+            QTableWidget {
+                background: transparent;
+                border: none;
+            }
+            QHeaderView{
+                background: rgba(0, 0, 0, 35);
+                border: none;
+                border-top-left-radius: 25px;
+                border-top-right-radius: 25px; 
+            }
+            QHeaderView::section {
+                background: transparent;
+                border: none;
+                font-family: Figtree;
+                font-size: 40px;
+                font-weight: bold;
+                padding-right: 30px;
+            }
+            QTableWidget::item {
+                padding-left: 10px;  /* isi menjauh dari header */
+                padding-right: 10px;  /* isi menjauh dari header */
+                border-bottom: 1px solid #ccc;  /* hanya garis bawah antar baris */
+            }
+            QTableWidget::item:selected {
+                color: white;
+                background-color: #2d2d2d;
+            }
+        """)
+        self.table_widget.setGeometry(*self.scale_rect(89, 172, 1742, 830))
+        self.table_widget.setFont(FontManager.get_font("Figtree-Regular", 24))
+        self.table_widget.verticalHeader().setDefaultSectionSize(50)
+        self.table_widget.setSelectionBehavior(
+            QTableWidget.SelectionBehavior.SelectRows
         )
-        main_layout.addWidget(self.table_widget)
-
-        # Button layout
-        button_layout = QHBoxLayout()
 
         # Add New Usage Report button
-        self.new_report_button = QPushButton("Add New Usage Report")
-        self.new_report_button.setMinimumHeight(40)
-        self.new_report_button.setStyleSheet(
-            "QPushButton { background-color: #ccccff; border: 2px solid #6666cc; "
-            "border-radius: 5px; font-weight: bold; }"
-            "QPushButton:hover { background-color: #a3a3d9; }"
-        )
-        self.new_report_button.clicked.connect(self._on_add_new_report)
-        button_layout.addWidget(self.new_report_button)
+        self.anew_report_button = QPushButton(self)
+        add_normal = QIcon("assets/Report/add.png")
+        add_hover = QIcon("assets/Report/add_hover.png")
+        self.anew_report_button.setIcon(add_normal)
+        self.anew_report_button.setIconSize(QSize(*self.scale_icon(174, 174)))
+        self.anew_report_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background: transparent;
+            }
+        """)
+        self.anew_report_button.setGeometry(*self.scale_rect(1722, 865, 174, 174))
+        self.anew_report_button.enterEvent = lambda event: self.anew_report_button.setIcon(add_hover)
+        self.anew_report_button.leaveEvent = lambda event: self.anew_report_button.setIcon(add_normal)
+        self.anew_report_button.clicked.connect(self._on_add_new_report)
 
-        # Back button
-        self.back_button = QPushButton("Back to Reagent Details")
-        self.back_button.setMinimumHeight(40)
+        # Add circular back button in top-left corner
+        self.back_button = QPushButton(self)
+        back_normal = QIcon("assets/Report/icon_back.png")
+        back_hover = QIcon("assets/Report/back_hover.png")
+        self.back_button.setIcon(back_normal)
+        self.back_button.setIconSize(QSize(*self.scale_icon(130, 130)))
+        self.back_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+            }
+        """)
+        # Perubahan penting: Mengganti koneksi dari on_login_success ke _login
+        self.back_button.setGeometry(*self.scale_rect(12, 12, 130, 130))
+        self.back_button.enterEvent = lambda event: self.back_button.setIcon(back_hover)
+        self.back_button.leaveEvent = lambda event: self.back_button.setIcon(back_normal)
         self.back_button.clicked.connect(self._on_back_clicked)
-        button_layout.addWidget(self.back_button)
 
-        main_layout.addSpacing(10)
-        main_layout.addLayout(button_layout)
+    def make_hover_event(self, button, normal_icon, hover_icon):
+        def on_enter(event):
+            button.setIcon(hover_icon)
+        def on_leave(event):
+            button.setIcon(normal_icon)
+        button.enterEvent = on_enter
+        button.leaveEvent = on_leave
 
     def _refresh_table(self):
         """Refresh the table with data from view model"""
@@ -115,26 +182,51 @@ class UsageReportView(QWidget):
             self.table_widget.setItem(
                 row, 0, QTableWidgetItem(report["formatted_date"])
             )
+            self.table_widget.item(row, 0).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table_widget.setItem(
                 row, 1, QTableWidgetItem(str(report["amount_used"]))
             )
+            self.table_widget.item(row, 1).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table_widget.setItem(row, 2, QTableWidgetItem(report["user"]))
+            self.table_widget.item(row, 2).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table_widget.setItem(
                 row, 3, QTableWidgetItem(report["supporting_materials"])
             )
+            self.table_widget.item(row, 3).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
             # Create action buttons (for edit and delete)
             actions_layout = QHBoxLayout()
 
-            edit_button = QPushButton("Edit")
+            edit_button = QPushButton()
             edit_button.setProperty("report_id", report["id"])
             edit_button.clicked.connect(self._on_edit_report)
-            edit_button.setStyleSheet("QPushButton { max-width: 60px; }")
+            icon_normal = QIcon("assets/Report/icon_edit.png")
+            icon_hover = QIcon("assets/Report/edit_hover.png")
+            edit_button.setIcon(icon_normal)
+            edit_button.setIconSize(QSize(*self.scale_icon(38, 38)))
+            edit_button.setStyleSheet("""
+                QPushButton {
+                    border: none;
+                    background-color: transparent;
+                }
+            """)
+            self.make_hover_event(edit_button, icon_normal, icon_hover)
+            edit_button.clicked.connect(self._on_edit_report)
 
-            delete_button = QPushButton("Delete")
+            delete_button = QPushButton()
             delete_button.setProperty("report_id", report["id"])
             delete_button.clicked.connect(self._on_delete_report)
-            delete_button.setStyleSheet("QPushButton { max-width: 60px; }")
+            delete_normal = QIcon("assets/Report/icon_delete.png")
+            delete_hover = QIcon("assets/Report/delete_hover.png")
+            delete_button.setIcon(delete_normal)
+            delete_button.setIconSize(QSize(*self.scale_icon(38, 38)))
+            delete_button.setStyleSheet("""
+                QPushButton {
+                    border: none;
+                    background-color: transparent;
+                }
+            """)
+            self.make_hover_event(delete_button, delete_normal, delete_hover)
 
             actions_layout.addWidget(edit_button)
             actions_layout.addWidget(delete_button)

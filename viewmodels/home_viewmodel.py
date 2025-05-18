@@ -10,7 +10,13 @@ class HomeViewModel(QObject):
     storage_error = pyqtSignal(str)
 
     def __init__(
-        self, record_model, user_model, storage_model, identity_model, usage_model
+        self,
+        record_model,
+        user_model,
+        storage_model,
+        identity_model,
+        usage_model,
+        supporting_materials_model,
     ):
         super().__init__()
         self.record_model = record_model
@@ -18,9 +24,9 @@ class HomeViewModel(QObject):
         self.storage_model = storage_model
         self.identity_model = identity_model
         self.usage_model = usage_model
+        self.supporting_materials_model = supporting_materials_model
         self.home_view = None
-        self.record_viewmodel = None
-        self.user_viewmodel = None
+        self.search_viewmodel = None
         self.rack_viewmodels = {}
 
     def create_home_view(self, parent_window):
@@ -58,31 +64,23 @@ class HomeViewModel(QObject):
         except Exception as e:
             self.storage_error.emit(f"Error getting storage data: {str(e)}")
 
-    def show_record_manager(self):
-        """Show the record manager view"""
-        if not self.home_view:
+    def show_search(self):
+        """Show the search view"""
+        if not self.home_view or not self.home_view.parent_window:
             return False
 
-        # Initialize record viewmodel if needed
-        if not self.record_viewmodel:
-            from viewmodels.record_viewmodel import RecordViewModel
+        # Initialize search viewmodel if needed
+        if not self.search_viewmodel:
+            from viewmodels.search_viewmodel import SearchViewModel
 
-            self.record_viewmodel = RecordViewModel(self.record_model)
+            self.search_viewmodel = SearchViewModel(
+                self.identity_model,
+                self.storage_model,
+                self.usage_model,
+                self.supporting_materials_model,
+            )
 
-        return self.record_viewmodel.create_record_view(self.home_view)
-
-    def show_user_management(self):
-        """Show the user management view"""
-        if not self.home_view:
-            return False
-
-        # Initialize user viewmodel if needed
-        if not self.user_viewmodel:
-            from viewmodels.user_viewmodel import UserViewModel
-
-            self.user_viewmodel = UserViewModel(self.user_model)
-
-        return self.user_viewmodel.create_user_view(self.home_view)
+        return self.search_viewmodel.create_search_view(self.home_view.parent_window)
 
     def show_rack(self, storage_id, storage_name):
         """Show a specific rack view"""
@@ -90,13 +88,13 @@ class HomeViewModel(QObject):
             return False
 
         # Initialize rack viewmodel if needed
-        # if storage_id not in self.rack_viewmodels:
         from viewmodels.rack_viewmodel import RackViewModel
 
         self.rack_viewmodels[storage_id] = RackViewModel(
             self.identity_model,
             self.storage_model,
             self.usage_model,
+            self.supporting_materials_model,
             storage_id,
             storage_name,
         )

@@ -13,7 +13,8 @@ class UserModel(BaseModel):
         CREATE TABLE IF NOT EXISTS {self.table_name} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT TRUE
@@ -21,13 +22,13 @@ class UserModel(BaseModel):
         """
         self._execute(query)
 
-    def create(self, username: str, email: str, password_hash: str) -> int:
+    def create(self, username: str, first_name: str, last_name: str, password_hash: str) -> int:
         query = f"""
-        INSERT INTO {self.table_name} (username, email, password_hash)
-        VALUES (?, ?, ?)
+        INSERT INTO {self.table_name} (username, first_name, last_name, password_hash)
+        VALUES (?, ?, ?, ?)
         RETURNING id
         """
-        result = self._execute(query, (username, email, password_hash), fetch_all=False)
+        result = self._execute(query, (username, first_name, last_name, password_hash), fetch_all=False)
         return result["id"] if result else None
 
     def get_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
@@ -43,9 +44,9 @@ class UserModel(BaseModel):
         result = self._execute(query)
         return result if result else []  # Return empty list instead of None
 
-    def update_email(self, user_id: int, new_email: str) -> bool:
-        query = f"UPDATE {self.table_name} SET email = ? WHERE id = ?"
-        return self._execute(query, (new_email, user_id)) > 0
+    def update_profile(self, user_id: int, first_name: str, last_name: str) -> bool:
+        query = f"UPDATE {self.table_name} SET first_name = ?, last_name = ? WHERE id = ?"
+        return self._execute(query, (first_name, last_name, user_id)) > 0
 
     def deactivate(self, user_id: int) -> bool:
         query = f"UPDATE {self.table_name} SET is_active = FALSE WHERE id = ?"
