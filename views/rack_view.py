@@ -87,7 +87,7 @@ class RackView(QWidget):
         title_label = QLabel(container)
         self.rack_title = title_label  # Will be updated when data loads
         title_label.setGeometry(0, 0, screen_size.width(), 132)
-        title_label.setFont(FontManager.get_font("PlusJakartaSans-Regular", 60))
+        title_label.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(60)))
         title_label.setStyleSheet("""
             QLabel{
                 font-weight: bold;
@@ -148,11 +148,11 @@ class RackView(QWidget):
         self.prev_button.raise_()
 
         self.page_label = QLabel(container)
-        self.page_label.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
-        self.page_label.setStyleSheet("font-weight: bold; color: white;")
+        self.page_label.setFont(FontManager.get_font("PlusJakartaSans-Regular", 24))
+        self.page_label.setStyleSheet("color: white;")
         self.page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.page_label.setFixedSize(QSize(*self.scale_icon(150, 150)))
-        self.page_label.move(940, 885)
+        self.page_label.move(*self.scale_icon(895, 880))
         self.page_label.raise_()
 
         self.next_button = QPushButton(container)
@@ -235,11 +235,11 @@ class RackView(QWidget):
     def _get_button_style_for_hazard(self, hazard_category):
         """Return button style based on hazard category"""
         if hazard_category in ["High", "Extreme"]:
-            return "QPushButton { background-color: #ffcccc; border: 2px solid #ff6666; } QPushButton:hover { background-color: #ffaaaa; }"
+            return "QPushButton { background-color: #ffcccc; border: 2px solid #ff6666; color: black;} QPushButton:hover { background-color: #ffaaaa; }"
         elif hazard_category == "Medium":
-            return "QPushButton { background-color: #fff2cc; border: 2px solid #ffcc66; } QPushButton:hover { background-color: #ffebaa; }"
+            return "QPushButton { background-color: #fff2cc; border: 2px solid #ffcc66; color: black;} QPushButton:hover { background-color: #ffebaa; }"
         else:
-            return "QPushButton { background-color: #e6f2ff; border: 2px solid #99ccff; } QPushButton:hover { background-color: #cce6ff; }"
+            return "QPushButton { background-color: #e6f2ff; border: 2px solid #99ccff; color: black;} QPushButton:hover { background-color: #cce6ff; }"
 
     def _total_pages(self):
         return max(

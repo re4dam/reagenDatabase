@@ -7,7 +7,6 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
     QLabel,
     QPushButton,
-    QFrame,
     QHeaderView,
     QMessageBox,
 )
@@ -88,38 +87,41 @@ class UsageReportView(QWidget):
         )
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.setShowGrid(False)
-        self.table_widget.setStyleSheet("""
-            QTableWidget {
+        self.table_widget.setStyleSheet(f"""
+            QTableWidget {{
+                color: black;
+                outline: none;
                 background: transparent;
                 border: none;
-            }
-            QHeaderView{
+            }}
+            QHeaderView{{
+                color: black;
                 background: rgba(0, 0, 0, 35);
                 border: none;
-                border-top-left-radius: 25px;
-                border-top-right-radius: 25px; 
-            }
-            QHeaderView::section {
+                border-top-left-radius: {self.scale_style(25)}px;
+                border-top-right-radius: {self.scale_style(25)}px; 
+            }}
+            QHeaderView::section {{
                 background: transparent;
                 border: none;
                 font-family: Figtree;
-                font-size: 40px;
+                font-size: {self.scale_style(40)}px;
                 font-weight: bold;
-                padding-right: 30px;
-            }
-            QTableWidget::item {
-                padding-left: 10px;  /* isi menjauh dari header */
-                padding-right: 10px;  /* isi menjauh dari header */
+                padding-right: {self.scale_style(30)}px;
+            }}
+            QTableWidget::item {{
+                padding-left: {self.scale_style(10)}px;  /* isi menjauh dari header */
+                padding-right: {self.scale_style(10)}px;  /* isi menjauh dari header */
                 border-bottom: 1px solid #ccc;  /* hanya garis bawah antar baris */
-            }
-            QTableWidget::item:selected {
+            }}
+            QTableWidget::item:selected {{
                 color: white;
-                background-color: #2d2d2d;
-            }
+                background-color: rgba(0, 0, 0, 100);
+            }}
         """)
         self.table_widget.setGeometry(*self.scale_rect(89, 172, 1742, 830))
-        self.table_widget.setFont(FontManager.get_font("Figtree-Regular", 24))
-        self.table_widget.verticalHeader().setDefaultSectionSize(50)
+        self.table_widget.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(24)))
+        self.table_widget.verticalHeader().setDefaultSectionSize(self.scale_style(55))
         self.table_widget.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
         )

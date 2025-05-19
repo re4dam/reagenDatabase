@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QLineEdit,
-    QFrame,
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
@@ -84,10 +83,9 @@ class SearchView(QWidget):
         # Search field
         self.search_input = QLineEdit(search_bar)
         self.search_input.setPlaceholderText("Enter search term...")
-        self.search_input.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.search_input.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
         self.search_input.setPlaceholderText("Enter search term...")
-        self.search_input.setMinimumHeight(94)
-        self.search_input.setStyleSheet(f"""padding-left: {self.scale_style(15)}px; padding-bottom: {self.scale_style(20)}px; border: none; background: transparent;""")
+        self.search_input.setStyleSheet(f"""padding-left: {self.scale_style(15)}px; color: black; border: none; background: transparent;""")
         self.search_input.textChanged.connect(self._perform_search)
         search_controls.addWidget(self.search_input)
 
@@ -99,14 +97,24 @@ class SearchView(QWidget):
         )
         self.search_field.setStyleSheet("""
             QComboBox {
+                color: black;
                 border: none;
                 background: transparent;
             }
             QComboBox QAbstractItemView {
+                outline: none;
+                border: none;
                 background-color: white;
                 color: black;
-                selection-background-color: #0078d7;
+                selection-background-color: #2d2d2d;
                 selection-color: white;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                padding-left: 5px;
+                outline: none;
+                border: none;
+                background-color: #2d2d2d;
+                color: white;
             }
             QComboBox::drop-down {
                 subcontrol-origin: padding;
@@ -141,37 +149,37 @@ class SearchView(QWidget):
             ["Name", "Storage", "Type", "Hazard", "Stock"]
         )
         self.results_table.setShowGrid(False)
-        self.results_table.setStyleSheet("""
-            QTableWidget {
+        self.results_table.setStyleSheet(f"""
+            QTableWidget {{
                 background: transparent;
                 border: none;
-            }
-            QHeaderView{
+            }}
+            QHeaderView{{
                 background: rgba(0, 0, 0, 35);
                 border: none;
-                border-top-left-radius: 25px;
-                border-top-right-radius: 25px; 
-            }
-            QHeaderView::section {
+                border-top-left-radius: {self.scale_style(25)}px;
+                border-top-right-radius: {self.scale_style(25)}px; 
+            }}
+            QHeaderView::section {{
                 background: transparent;
                 border: none;
                 font-family: Figtree;
-                font-size: 40px;
+                font-size: {self.scale_style(40)}px;
                 font-weight: bold;
                 padding-right: 30px;
-            }
-            QTableWidget::item {
-                padding-left: 10px;  /* isi menjauh dari header */
-                padding-right: 10px;  /* isi menjauh dari header */
+            }}
+            QTableWidget::item {{
+                padding-left: {self.scale_style(10)}px;  /* isi menjauh dari header */
+                padding-right: {self.scale_style(10)}px;  /* isi menjauh dari header */
                 border-bottom: 1px solid #ccc;  /* hanya garis bawah antar baris */
-            }
-            QTableWidget::item:selected {
+            }}
+            QTableWidget::item:selected {{
                 color: white;
                 background-color: #2d2d2d;
-            }
+            }}
         """)
         self.results_table.setGeometry(*self.scale_rect(19, 170, 1882, 870))
-        self.results_table.setFont(FontManager.get_font("Figtree-Regular", 24))
+        self.results_table.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(24)))
 
         # Set table properties
         self.results_table.horizontalHeader().setSectionResizeMode(
@@ -190,7 +198,7 @@ class SearchView(QWidget):
             4, QHeaderView.ResizeMode.ResizeToContents
         )
         self.results_table.verticalHeader().setVisible(False)
-        self.results_table.verticalHeader().setDefaultSectionSize(50)
+        self.results_table.verticalHeader().setDefaultSectionSize(self.scale_style(50))
         self.results_table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
         )

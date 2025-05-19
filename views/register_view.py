@@ -66,34 +66,35 @@ class RegisterView(QWidget):
         panel_label = QLabel(container)
         panel_label.setPixmap(QPixmap("assets/Register/Register2.png"))
         panel_label.setScaledContents(True)
-        panel_label.setGeometry(*self.scale_rect(54, 23, 1812, 1012))
+        panel_label.setGeometry(*self.scale_rect(54, 22, 1812, 1012))
         panel_label.raise_()  # put it on top of background
 
         #Logo
         logo = QLabel(container)
         logo.setPixmap(QPixmap("assets/logo.png"))
         logo.setScaledContents(True)
-        logo.setGeometry(*self.scale_rect(85, 50, 673, 93))
+        logo.setGeometry(*self.scale_rect(85, 49, 673, 93))
         logo.raise_()
 
         #Tulisan Register
         register_text = QLabel(container)
         register_text.setPixmap(QPixmap("assets/Register/RegisterText.png"))
         register_text.setScaledContents(True)
-        register_text.setGeometry(*self.scale_rect(1255, 70, 325, 51))
+        register_text.setGeometry(*self.scale_rect(1255, 69, 325, 51))
         register_text.raise_()
 
         #First Name
         firstname = QLabel(container)
         firstname.setPixmap(QPixmap("assets/Register/firstname.png"))
         firstname.setScaledContents(True)
-        firstname.setGeometry(*self.scale_rect(995, 195, 183, 28))
+        firstname.setGeometry(*self.scale_rect(995, 194, 183, 28))
         firstname.raise_()
         
         self.firstname_input = QLineEdit(container)
         self.firstname_input.setPlaceholderText("First Name")
         self.firstname_input.setStyleSheet(f"""
             QLineEdit {{
+                color: black;
                 border: 1px solid #ccc;
                 border-radius: {self.scale_style(35)}px;
                 padding-left: {self.scale_style(24)}px;
@@ -105,20 +106,21 @@ class RegisterView(QWidget):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.firstname_input.setGeometry(*self.scale_rect(995, 248, 843, 74))
+        self.firstname_input.setGeometry(*self.scale_rect(995, 247, 843, 74))
         self.firstname_input.raise_()
 
         #Last Name
         lastname = QLabel(container)
         lastname.setPixmap(QPixmap("assets/Register/lastname.png"))
         lastname.setScaledContents(True)
-        lastname.setGeometry(*self.scale_rect(995, 358, 180, 28))
+        lastname.setGeometry(*self.scale_rect(995, 357, 180, 28))
         lastname.raise_()
         
         self.lastname_input = QLineEdit(container)
         self.lastname_input.setPlaceholderText("Last Name")
         self.lastname_input.setStyleSheet(f"""
             QLineEdit {{
+                color: black;
                 border: 1px solid #ccc;
                 border-radius: {self.scale_style(35)}px;
                 padding-left: {self.scale_style(24)}px;
@@ -130,20 +132,21 @@ class RegisterView(QWidget):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.lastname_input.setGeometry(*self.scale_rect(995, 407, 843, 74))
+        self.lastname_input.setGeometry(*self.scale_rect(995, 406, 843, 74))
         self.lastname_input.raise_()
 
         #Username
         username = QLabel(container)
         username.setPixmap(QPixmap("assets/login/username.png"))
         username.setScaledContents(True)
-        username.setGeometry(*self.scale_rect(995, 513, 174, 28))
+        username.setGeometry(*self.scale_rect(995, 512, 174, 28))
         username.raise_()
         
         self.username_input = QLineEdit(container)
         self.username_input.setPlaceholderText("Masukkan username")
         self.username_input.setStyleSheet(f"""
             QLineEdit {{
+                color: black;
                 border: 1px solid #ccc;
                 border-radius: {self.scale_style(35)}px;
                 padding-left: {self.scale_style(24)}px;
@@ -155,14 +158,14 @@ class RegisterView(QWidget):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.username_input.setGeometry(*self.scale_rect(995, 560, 843, 74))
+        self.username_input.setGeometry(*self.scale_rect(995, 559, 843, 74))
         self.username_input.raise_()
 
         #Password
         password = QLabel(container)
         password.setPixmap(QPixmap("assets/login/password.png"))
         password.setScaledContents(True)
-        password.setGeometry(*self.scale_rect(995, 668, 169, 29))
+        password.setGeometry(*self.scale_rect(995, 667, 169, 29))
         password.raise_()
 
         self.password_input = QLineEdit(container)
@@ -170,6 +173,7 @@ class RegisterView(QWidget):
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setStyleSheet(f"""
             QLineEdit {{
+                color: black;
                 border: 1px solid #ccc;
                 border-radius: {self.scale_style(35)}px;
                 padding-left: {self.scale_style(24)}px;
@@ -181,7 +185,7 @@ class RegisterView(QWidget):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.password_input.setGeometry(*self.scale_rect(995, 715, 843, 74))
+        self.password_input.setGeometry(*self.scale_rect(995, 714, 843, 74))
         self.password_input.raise_()
 
         self.toggle_password_btn = QPushButton(container)
@@ -195,7 +199,7 @@ class RegisterView(QWidget):
             }
         """)
         self.toggle_password_btn.clicked.connect(self.eyeClicked)
-        self.toggle_password_btn.setGeometry(*self.scale_rect(1778, 732, 40, 40))
+        self.toggle_password_btn.setGeometry(*self.scale_rect(1778, 731, 40, 40))
         self.toggle_password_btn.raise_()
 
         # Kembali ke Login
@@ -210,7 +214,7 @@ class RegisterView(QWidget):
                 background-color: transparent;
             }
         """)
-        back_to_login.setGeometry(*self.scale_rect(1369, 806, 463, 26))
+        back_to_login.setGeometry(*self.scale_rect(1369, 805, 463, 26))
         back_to_login.enterEvent = lambda event: back_to_login.setIcon(icon_hover)
         back_to_login.leaveEvent = lambda event: back_to_login.setIcon(icon_normal)
         back_to_login.clicked.connect(self._back_to_login)
@@ -229,7 +233,7 @@ class RegisterView(QWidget):
             }
         """)
         # Ubah koneksi ke fungsi _register
-        register_button.setGeometry(*self.scale_rect(1044, 940, 745, 68))
+        register_button.setGeometry(*self.scale_rect(1044, 939, 745, 68))
         register_button.enterEvent = lambda event: register_button.setIcon(register_hover)
         register_button.leaveEvent = lambda event: register_button.setIcon(register_normal)
         register_button.clicked.connect(self._register)

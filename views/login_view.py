@@ -93,41 +93,42 @@ class LoginView(QMainWindow):
         panel_label = QLabel(container)
         panel_label.setPixmap(QPixmap("assets/login/Login2.png"))
         panel_label.setScaledContents(True)
-        panel_label.setGeometry(*self.scale_rect(54, 23, 1812, 1012))
+        panel_label.setGeometry(*self.scale_rect(54, 22, 1812, 1012))
         panel_label.raise_()  # put it on top of background
         
         #Logo
         logo = QLabel(container)
         logo.setPixmap(QPixmap("assets/logo.png"))
         logo.setScaledContents(True)
-        logo.setGeometry(*self.scale_rect(85, 50, 673, 93))
+        logo.setGeometry(*self.scale_rect(85, 49, 673, 93))
         logo.raise_()
 
         #Tulisan Login
         login_text = QLabel(container)
         login_text.setPixmap(QPixmap("assets/login/LoginText.png"))
         login_text.setScaledContents(True)
-        login_text.setGeometry(*self.scale_rect(397, 232, 211, 51))
+        login_text.setGeometry(*self.scale_rect(397, 231, 211, 51))
         login_text.raise_()
 
         #Tulisan Selamat Datang
         Welcome = QLabel(container)
         Welcome.setPixmap(QPixmap("assets/login/selamat_datang.png"))
         Welcome.setScaledContents(True)
-        Welcome.setGeometry(*self.scale_rect(85, 352, 425, 52))
+        Welcome.setGeometry(*self.scale_rect(85, 351, 425, 52))
         Welcome.raise_()
 
         #Username
         username = QLabel(container)
         username.setPixmap(QPixmap("assets/login/username.png"))
         username.setScaledContents(True)
-        username.setGeometry(*self.scale_rect(85, 445, 174, 28))
+        username.setGeometry(*self.scale_rect(85, 444, 174, 28))
         username.raise_()
         
         self.username_input = QLineEdit(container)
         self.username_input.setPlaceholderText("Masukkan username")
         self.username_input.setStyleSheet(f"""
             QLineEdit {{
+                color: black;
                 border: 1px solid #ccc;
                 border-radius: {self.scale_style(35)}px;
                 padding-left: {self.scale_style(24)}px;
@@ -139,14 +140,14 @@ class LoginView(QMainWindow):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.username_input.setGeometry(*self.scale_rect(85, 493, 843, 74))
+        self.username_input.setGeometry(*self.scale_rect(85, 492, 843, 74))
         self.username_input.raise_()
 
         #Password
         password = QLabel(container)
         password.setPixmap(QPixmap("assets/login/password.png"))
         password.setScaledContents(True)
-        password.setGeometry(*self.scale_rect(85, 609, 169, 29))
+        password.setGeometry(*self.scale_rect(85, 608, 169, 29))
         password.raise_()
 
         self.password_input = QLineEdit(container)
@@ -154,6 +155,7 @@ class LoginView(QMainWindow):
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setStyleSheet(f"""
             QLineEdit {{
+                color: black;
                 border: 1px solid #ccc;
                 border-radius: {self.scale_style(35)}px;
                 padding-left: {self.scale_style(24)}px;
@@ -165,7 +167,7 @@ class LoginView(QMainWindow):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.password_input.setGeometry(*self.scale_rect(85, 662, 843, 74))
+        self.password_input.setGeometry(*self.scale_rect(85, 661, 843, 74))
         self.password_input.raise_()
 
         self.toggle_password_btn = QPushButton(container)
@@ -179,7 +181,7 @@ class LoginView(QMainWindow):
             }
         """)
         self.toggle_password_btn.clicked.connect(self.eyeClicked)
-        self.toggle_password_btn.setGeometry(*self.scale_rect(868, 680, 40, 40))
+        self.toggle_password_btn.setGeometry(*self.scale_rect(868, 679, 40, 40))
         self.toggle_password_btn.raise_()
 
         # Register
@@ -194,7 +196,7 @@ class LoginView(QMainWindow):
                 background-color: transparent;
             }
         """)
-        register.setGeometry(*self.scale_rect(500, 752, 420, 26))
+        register.setGeometry(*self.scale_rect(500, 751, 420, 26))
         register.enterEvent = lambda event: register.setIcon(icon_hover)
         register.leaveEvent = lambda event: register.setIcon(icon_normal)
         register.clicked.connect(self._show_register)
@@ -213,7 +215,7 @@ class LoginView(QMainWindow):
             }
         """)
         # Perubahan penting: Mengganti koneksi dari on_login_success ke _login
-        login_toggle.setGeometry(*self.scale_rect(134, 940, 745, 68))
+        login_toggle.setGeometry(*self.scale_rect(134, 939, 745, 68))
         login_toggle.enterEvent = lambda event: login_toggle.setIcon(login_hover)
         login_toggle.leaveEvent = lambda event: login_toggle.setIcon(login_normal)
         login_toggle.clicked.connect(self._login)

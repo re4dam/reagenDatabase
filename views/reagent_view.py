@@ -69,9 +69,9 @@ class ReagentDetailPanel(QWidget):
         return int(px * scale_y)
         
     def _setup_ui(self):
+        screen_size = AppContext.get_screen_resolution()
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
-        screen_size = AppContext.get_screen_resolution()
         
         # Create container widget for layering
         container = QWidget()
@@ -83,7 +83,7 @@ class ReagentDetailPanel(QWidget):
         background_label = QLabel(container)
         background_label.setPixmap(QPixmap("assets/ReagenView/background.png"))  # Use your actual image path
         background_label.setScaledContents(True)
-        background_label.setGeometry(0, 0, 1920, 1080)
+        background_label.setGeometry(0, 0, screen_size.width(), screen_size.height())
 
         # Add circular back button in top-left corner
         self.back_button = QPushButton(container)
@@ -120,7 +120,7 @@ class ReagentDetailPanel(QWidget):
 
         # Name field
         self.name_edit = QLineEdit(container)
-        self.name_edit.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.name_edit.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
         self.name_edit.setGeometry(*self.scale_rect(122, 240, 506, 55))
         self.name_edit.raise_()
 
@@ -168,35 +168,35 @@ class ReagentDetailPanel(QWidget):
             }
         """)
         calendar.setFixedSize(300, 300)
-        self.purchase_date_edit.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
-        self.purchase_date_edit.setGeometry(*self.scale_rect(122, 350, 506, 60))
+        self.purchase_date_edit.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
+        self.purchase_date_edit.setGeometry(*self.scale_rect(122, 355, 506, 60))
         self.purchase_date_edit.raise_()
 
         # Stock field
         self.stock_spin = QSpinBox(container)
         self.stock_spin.setRange(0, 10000)
-        self.stock_spin.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.stock_spin.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
         self.stock_spin.setGeometry(*self.scale_rect(122, 461, 506, 60))
         self.stock_spin.raise_()
 
         # Massa field
         self.massa_spin = QSpinBox(container)
         self.massa_spin.setRange(0, 100000)
-        self.massa_spin.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.massa_spin.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
         self.massa_spin.setGeometry(*self.scale_rect(122, 573, 506, 60))
         self.massa_spin.raise_()
 
         # Category_Hazard field
         self.hazard_combo = QComboBox(container)
         self.hazard_combo.addItems(["None", "Low", "Medium", "High", "Extreme"])
-        self.hazard_combo.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.hazard_combo.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
         self.hazard_combo.setGeometry(*self.scale_rect(124, 685, 506, 60))
         self.hazard_combo.raise_()
 
         # Wujud (form/state) field
         self.wujud_combo = QComboBox(container)
         self.wujud_combo.addItems(["Solid", "Liquid", "Gas", "Solution"])
-        self.wujud_combo.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.wujud_combo.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
         self.wujud_combo.setGeometry(*self.scale_rect(670, 235, 506, 60))
         self.set_combo_align_right(self.wujud_combo)
         self.wujud_combo.raise_()
@@ -204,7 +204,7 @@ class ReagentDetailPanel(QWidget):
         # Sifat field
         self.sifat_edit = QTextEdit(container)
         self.sifat_edit.setMaximumHeight(100)
-        self.sifat_edit.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.sifat_edit.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
         self.sifat_edit.setGeometry(*self.scale_rect(670, 360, 506, 60))
         self.sifat_edit.raise_()
 
@@ -220,7 +220,8 @@ class ReagentDetailPanel(QWidget):
             self.storage_id_label.setText("Lemari Rak C")
         elif tipe == 4:
             self.storage_id_label.setText("Lemari Rak D")
-        self.storage_id_label.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.storage_id_label.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
+        self.storage_id_label.setStyleSheet("color: black;")
         self.storage_id_label.setGeometry(*self.scale_rect(670, 475, 506, 60))
         self.storage_id_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.storage_id_label.raise_()
@@ -271,7 +272,7 @@ class ReagentDetailPanel(QWidget):
             }
         """)
         another_calendar.setFixedSize(300, 300)
-        self.expire_date_edit.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.expire_date_edit.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
         self.expire_date_edit.setGeometry(*self.scale_rect(670, 600, 506, 60))
         self.expire_date_edit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.expire_date_edit.raise_()
@@ -279,7 +280,7 @@ class ReagentDetailPanel(QWidget):
         # SDS field
         self.sds_status_label = QLabel(container)
         self.sds_status_label.setText("No SDS file")
-        self.sds_status_label.setFont(FontManager.get_font("PlusJakartaSans-Italic", 20))
+        self.sds_status_label.setFont(FontManager.get_font("PlusJakartaSans-Italic", self.scale_style(20)))
         self.sds_status_label.setStyleSheet("color: #666;")
         self.sds_status_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.sds_status_label.setGeometry(*self.scale_rect(670, 725, 506, 60))
@@ -287,7 +288,7 @@ class ReagentDetailPanel(QWidget):
 
         self.view_sds_button = QPushButton(container)
         self.view_sds_button.setText("View")
-        self.view_sds_button.setFont(FontManager.get_font("PlusJakartaSans-Regular", 16))
+        self.view_sds_button.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(16)))
         self.view_sds_button.setGeometry(*self.scale_rect(930, 692, 65, 40))
         self.view_sds_button.clicked.connect(self._view_sds)
         self.view_sds_button.raise_()
@@ -296,14 +297,14 @@ class ReagentDetailPanel(QWidget):
 
         self.upload_sds_button = QPushButton(container)
         self.upload_sds_button.setText("Upload SDS")
-        self.upload_sds_button.setFont(FontManager.get_font("PlusJakartaSans-Regular", 16))
+        self.upload_sds_button.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(16)))
         self.upload_sds_button.setGeometry(*self.scale_rect(933, 773, 135, 40))
         self.upload_sds_button.clicked.connect(self._upload_sds)
         self.upload_sds_button.raise_()
 
         self.clear_sds_button = QPushButton(container)
         self.clear_sds_button.setText("Clear SDS")
-        self.clear_sds_button.setFont(FontManager.get_font("PlusJakartaSans-Regular", 16))
+        self.clear_sds_button.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(16)))
         self.clear_sds_button.setGeometry(*self.scale_rect(1068, 773, 110, 40))
         self.clear_sds_button.clicked.connect(self._clear_sds)
         self.clear_sds_button.raise_()
@@ -1051,7 +1052,7 @@ class ReagentDetailPanel(QWidget):
                 painter = QPainter(rounded_pixmap)
                 painter.setRenderHint(QPainter.RenderHint.Antialiasing)
                 path = QPainterPath()
-                path.addRoundedRect(QRectF(0, 0, self.image_label.width(), self.image_label.height()), 30, 30)  # 30px radius lengkungan
+                path.addRoundedRect(QRectF(0, 0, self.image_label.width(), self.image_label.height()), self.scale_style(30), self.scale_style(30))  # 30px radius lengkungan
 
                 painter.setClipPath(path)
                 painter.drawPixmap(0, 0, pixmap)

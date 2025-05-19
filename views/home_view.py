@@ -90,19 +90,25 @@ class HomeView(QWidget):
         self.rack_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layer_layout.addWidget(self.rack_main)
 
+        self.background_search = QLabel(self.main_layer)
+        self.background_search.setPixmap(QPixmap("assets/Home/bg_blur.png"))
+        self.background_search.setScaledContents(True)
+        self.background_search.setGeometry(0, 0, self.screen_size.width(), self.screen_size.height())
+        self.background_search.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.background_search_opacity = QGraphicsOpacityEffect()
+        self.background_search_opacity.setOpacity(0.0)
+        self.background_search.setGraphicsEffect(self.background_search_opacity)
+
         # Background Blur (search)
         self.bg_blur = QPushButton(self.main_layer)
         self.bg_blur.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        picture = QIcon("assets/Home/bg_blur.png")
-        self.bg_blur.setIcon(picture)
-        self.bg_blur.setIconSize(QSize(*self.scale_icon(self.screen_size.width(), self.screen_size.height())))  # Ukuran ikon/gambar
         self.bg_blur.setStyleSheet("""
             QPushButton {
                 border: none;
                 background-color: transparent;
             }
         """)
-        self.bg_blur.setGeometry(*self.scale_rect(0, 0, self.screen_size.width(), self.screen_size.height()))
+        self.bg_blur.setGeometry(*self.scale_rect(0, 0, 1920, 1080))
         self.bg_blur_opacity = QGraphicsOpacityEffect()
         self.bg_blur_opacity.setOpacity(0.0)
         self.bg_blur.setGraphicsEffect(self.bg_blur_opacity)
@@ -127,15 +133,13 @@ class HomeView(QWidget):
         self.bg_search_input.setPixmap(QPixmap("assets/Home/search_bar.png"))
         self.bg_search_input.setScaledContents(True)
         self.bg_search_input.setStyleSheet("border: none;")
-        self.bg_search_input.setMinimumHeight(94)
-        self.bg_search_input.setGeometry(*self.scale_rect(0, -94, self.screen_size.width(), 94))
+        self.bg_search_input.setGeometry(*self.scale_rect(0, -94, 1920, 94))
 
         # Search input field
         self.search_input = QLineEdit(self.main_layer)
-        self.search_input.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
+        self.search_input.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
         self.search_input.setPlaceholderText("Enter search term...")
-        self.search_input.setMinimumHeight(94)
-        self.search_input.setStyleSheet(f"""padding-left: {self.scale_style(20)}px; border: none; background: transparent;""")
+        self.search_input.setStyleSheet(f"""color: black; padding-left: {self.scale_style(20)}px; border: none; background: transparent;""")
         self.search_input.returnPressed.connect(self._perform_search)
         self.search_input.setGeometry(*self.scale_rect(0, -94, 1615, 94))
 
@@ -147,14 +151,24 @@ class HomeView(QWidget):
         )
         self.search_field.setStyleSheet("""
             QComboBox {
+                color: black;
                 border: none;
                 background: transparent;
             }
             QComboBox QAbstractItemView {
+                outline: none;
+                border: none;
                 background-color: white;
                 color: black;
-                selection-background-color: #0078d7;
+                selection-background-color: #2d2d2d;
                 selection-color: white;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                padding-left: 5px;
+                outline: none;
+                border: none;
+                background-color: #2d2d2d;
+                color: white;
             }
             QComboBox::drop-down {
                 subcontrol-origin: padding;
@@ -179,19 +193,25 @@ class HomeView(QWidget):
         self.search_button.clicked.connect(self._perform_search)
         self.search_button.setGeometry(*self.scale_rect(1829, -79, 65, 65))
 
+        self.background_search2 = QLabel(self.main_layer)
+        self.background_search2.setPixmap(QPixmap("assets/Home/bg_blur.png"))
+        self.background_search2.setScaledContents(True)
+        self.background_search2.setGeometry(0, 0, self.screen_size.width(), self.screen_size.height())
+        self.background_search2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.background_search2_opacity = QGraphicsOpacityEffect()
+        self.background_search2_opacity.setOpacity(0.0)
+        self.background_search2.setGraphicsEffect(self.background_search2_opacity)
+
         # Background Blur (search)
         self.bg_blur2 = QPushButton(self.main_layer)
         self.bg_blur2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        picture = QIcon("assets/Home/bg_blur.png")
-        self.bg_blur2.setIcon(picture)
-        self.bg_blur2.setIconSize(QSize(*self.scale_icon(self.screen_size.width(), self.screen_size.height())))  # Ukuran ikon/gambar
         self.bg_blur2.setStyleSheet("""
             QPushButton {
                 border: none;
                 background-color: transparent;
             }
         """)
-        self.bg_blur2.setGeometry(*self.scale_rect(0, 0, self.screen_size.width(), self.screen_size.height()))
+        self.bg_blur2.setGeometry(*self.scale_rect(0, 0, 1920, 1080))
         self.bg_blur2_opacity = QGraphicsOpacityEffect()
         self.bg_blur2_opacity.setOpacity(0.0)
         self.bg_blur2.setGraphicsEffect(self.bg_blur2_opacity)
@@ -219,7 +239,7 @@ class HomeView(QWidget):
         self.profilebar.setPixmap(QPixmap("assets/Home/profile_bar.png"))
         self.profilebar.setScaledContents(True)
         self.profilebar.setStyleSheet("border: none;")
-        self.profilebar.setGeometry(*self.scale_rect(2426, 0, 506, self.screen_size.height()))
+        self.profilebar.setGeometry(*self.scale_rect(2426, 0, 506, 1080))
 
         # # Bottom buttons container
         # bottom_buttons_layout = QHBoxLayout()
@@ -258,22 +278,26 @@ class HomeView(QWidget):
         # main_layout.addLayout(bottom_buttons_layout)
     def _search_appear(self):
         self.top_search.setGeometry(*self.scale_rect(557, 117, 814, 19))
+        self.background_search_opacity.setOpacity(1.0)
         self.bg_blur_opacity.setOpacity(1.0)
+        self.background_search.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self.bg_blur.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self.sidebar_opacity.setOpacity(0.0)
         self.sidebar.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.bg_search_input.setGeometry(*self.scale_rect(0, 0, self.screen_size.width(), 94))
+        self.bg_search_input.setGeometry(*self.scale_rect(0, 0, 1920, 94))
         self.search_input.setGeometry(*self.scale_rect(0, 0, 1615, 94))
         self.search_field.setGeometry(*self.scale_rect(1629, 0, 200, 94))
         self.search_button.setGeometry(*self.scale_rect(1829, 14, 65, 65))
 
     def _exit_search(self):
         self.top_search.setGeometry(*self.scale_rect(557, 17, 814, 19))
+        self.background_search_opacity.setOpacity(0.0)
         self.bg_blur_opacity.setOpacity(0.0)
+        self.background_search.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.bg_blur.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.sidebar_opacity.setOpacity(1.0)
         self.sidebar.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
-        self.bg_search_input.setGeometry(*self.scale_rect(0, -94, self.screen_size.width(), 94))
+        self.bg_search_input.setGeometry(*self.scale_rect(0, -94, 1920, 94))
         self.search_input.setGeometry(*self.scale_rect(0, -94, 1615, 94))
         self.search_field.setGeometry(*self.scale_rect(1629, -94, 200, 94))
         self.search_button.setGeometry(*self.scale_rect(1829, -79, 65, 65))
@@ -281,14 +305,18 @@ class HomeView(QWidget):
 
     def _sidebar_appear(self):
         self.sidebar.setGeometry(*self.scale_rect(1380, 200, 17, 708))
-        self.profilebar.setGeometry(*self.scale_rect(1414, 0, 506, self.screen_size.height()))
+        self.profilebar.setGeometry(*self.scale_rect(1414, 0, 506, 1080))
         self.bg_blur2_opacity.setOpacity(1.0)
+        self.background_search2_opacity.setOpacity(1.0)
+        self.background_search2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self.bg_blur2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
 
     def _exit_sidebar(self):
         self.sidebar.setGeometry(*self.scale_rect(1890, 200, 17, 708))
-        self.profilebar.setGeometry(*self.scale_rect(2426, 0, 506, self.screen_size.height()))
+        self.profilebar.setGeometry(*self.scale_rect(2426, 0, 506, 1080))
         self.bg_blur2_opacity.setOpacity(0.0)
+        self.background_search2_opacity.setOpacity(0.0)
+        self.background_search2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.bg_blur2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
     def _perform_search(self):

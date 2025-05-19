@@ -1,5 +1,5 @@
 # main.py
-import sys, os
+import sys
 from PyQt6.QtWidgets import QApplication
 from app_context import AppContext
 from load_font import FontManager
