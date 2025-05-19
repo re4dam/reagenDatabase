@@ -12,9 +12,10 @@ from PyQt6.QtWidgets import (
     QFrame,
     QMessageBox,
 )
-from PyQt6.QtCore import Qt, pyqtSlot, QDate
-from PyQt6.QtGui import QFont
-
+from PyQt6.QtCore import Qt, pyqtSlot, QDate, QSize
+from PyQt6.QtGui import QFont, QPixmap, QIcon
+from app_context import AppContext
+from load_font import FontManager
 
 class UsageEditView(QWidget):
     def __init__(self, parent=None):
@@ -28,8 +29,38 @@ class UsageEditView(QWidget):
         """Set the ViewModel for this view"""
         self.usage_edit_viewmodel = viewmodel
 
+    def scale_rect(self, x, y, w, h):
+        screen_size = AppContext.get_screen_resolution()
+        scale_x = screen_size.width() / 1920
+        scale_y = screen_size.height() / 1080
+        return int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)
+    
+    def scale_icon(self, w, h):
+        screen_size = AppContext.get_screen_resolution()
+        scale_x = screen_size.width() / 1920
+        scale_y = screen_size.height() / 1080
+        return int(w * scale_x), int(h * scale_y)
+    
+    def scale_style(self, px):
+        screen_size = AppContext.get_screen_resolution()
+        scale_y = screen_size.height() / 1080
+        return int(px * scale_y)
+
     def _setup_ui(self):
+        self.screen_size = AppContext.get_screen_resolution()
+        self.setGeometry(0, 0, self.screen_size.width(), self.screen_size.height())
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        background_label = QLabel(self)
+        background_label.setPixmap(QPixmap("assets/Report/background.png"))  # Use your actual image path
+        background_label.setScaledContents(True)
+        background_label.setGeometry(*self.scale_rect(0, 0, 1920, 1080))
+
+        report_bg = QLabel(self)
+        report_bg.setPixmap(QPixmap("assets/report/report.png"))  # Use your actual image path
+        report_bg.setScaledContents(True)
+        report_bg.setGeometry(*self.scale_rect(89, 172, 1742, 830))
 
         # Panel title
         self.title_label = QLabel()
@@ -83,25 +114,40 @@ class UsageEditView(QWidget):
         self.stock_warning_label.setVisible(False)
         main_layout.addWidget(self.stock_warning_label)
 
-        # Buttons layout
-        buttons_layout = QHBoxLayout()
-
         # Save button
-        self.save_button = QPushButton("Save")
-        self.save_button.setMinimumHeight(40)
-        self.save_button.setStyleSheet("QPushButton { background-color: #ccffcc; }")
+        self.save_button = QPushButton(self)
+        save_normal = QIcon("assets/Report/icon_save.png")
+        save_hover = QIcon("assets/Report/save_hover.png")
+        self.save_button.setIcon(save_normal)
+        self.save_button.setIconSize(QSize(*self.scale_icon(174, 174)))
+        self.save_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background: transparent;
+            }
+        """)
+        self.save_button.setGeometry(*self.scale_rect(1722, 865, 174, 174))
+        self.save_button.enterEvent = lambda event: self.save_button.setIcon(save_hover)
+        self.save_button.leaveEvent = lambda event: self.save_button.setIcon(save_normal)
         self.save_button.clicked.connect(self._save_usage)
-        buttons_layout.addWidget(self.save_button)
 
-        # Cancel button
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setMinimumHeight(40)
-        self.cancel_button.setStyleSheet("QPushButton { background-color: #f0f0f0; }")
-        self.cancel_button.clicked.connect(self._cancel)
-        buttons_layout.addWidget(self.cancel_button)
-
-        main_layout.addSpacing(20)
-        main_layout.addLayout(buttons_layout)
+        # Add circular back button in top-left corner
+        self.back_button = QPushButton(self)
+        back_normal = QIcon("assets/Report/icon_back.png")
+        back_hover = QIcon("assets/Report/back_hover.png")
+        self.back_button.setIcon(back_normal)
+        self.back_button.setIconSize(QSize(*self.scale_icon(130, 130)))
+        self.back_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+            }
+        """)
+        # Perubahan penting: Mengganti koneksi dari on_login_success ke _login
+        self.back_button.setGeometry(*self.scale_rect(12, 12, 130, 130))
+        self.back_button.enterEvent = lambda event: self.back_button.setIcon(back_hover)
+        self.back_button.leaveEvent = lambda event: self.back_button.setIcon(back_normal)
+        self.back_button.clicked.connect(self._cancel)
 
     @pyqtSlot(dict, bool, int)
     def on_usage_loaded(self, usage_data, is_new, current_stock):
