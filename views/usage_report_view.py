@@ -131,14 +131,14 @@ class UsageReportView(QWidget):
         add_normal = QIcon("assets/Report/add.png")
         add_hover = QIcon("assets/Report/add_hover.png")
         self.anew_report_button.setIcon(add_normal)
-        self.anew_report_button.setIconSize(QSize(*self.scale_icon(174, 174)))
+        self.anew_report_button.setIconSize(QSize(*self.scale_icon(170, 170)))
         self.anew_report_button.setStyleSheet("""
             QPushButton {
                 border: none;
                 background: transparent;
             }
         """)
-        self.anew_report_button.setGeometry(*self.scale_rect(1722, 865, 174, 174))
+        self.anew_report_button.setGeometry(*self.scale_rect(1722, 865, 170, 170))
         self.anew_report_button.enterEvent = lambda event: self.anew_report_button.setIcon(add_hover)
         self.anew_report_button.leaveEvent = lambda event: self.anew_report_button.setIcon(add_normal)
         self.anew_report_button.clicked.connect(self._on_add_new_report)

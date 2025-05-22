@@ -8,6 +8,7 @@ class HomeViewModel(QObject):
     # Define signals
     storage_data_loaded = pyqtSignal(list)
     storage_error = pyqtSignal(str)
+    user_data_loaded = pyqtSignal(dict)
 
     def __init__(
         self,
@@ -28,6 +29,8 @@ class HomeViewModel(QObject):
         self.home_view = None
         self.search_viewmodel = None
         self.rack_viewmodels = {}
+        self.current_user_id = None
+        self.current_user_data = None
 
     def create_home_view(self, parent_window):
         """Create and show the home view"""
@@ -48,13 +51,56 @@ class HomeViewModel(QObject):
             # Connect signals
             self.storage_data_loaded.connect(self.home_view.on_storage_data_loaded)
             self.storage_error.connect(self.home_view.on_storage_error)
+            self.user_data_loaded.connect(self.home_view.set_user_data)
 
             # Load initial data
             self.load_storage_data()
 
+        # If current_user_id is set, load the user data
+        # if self.current_user_id:
+        #     print(f"Loading data for user ID: {self.current_user_id}")
+        #     self.load_current_user()
+
         # Switch to home widget
         parent_window.stacked_widget.setCurrentWidget(parent_window.home_widget)
         return True
+
+    def set_current_user_id(self, user_id):
+        """Set the current user ID and load the user data"""
+        print(f"Setting current user ID to: {user_id}")
+        self.current_user_id = user_id
+        # We'll wait to load the user data until the home view is created
+        # This ensures the signals are properly connected first
+
+    def load_current_user(self):
+        """Load the current user's data from the database"""
+        print(f"Loading user data for ID: {self.current_user_id}")
+        if not self.current_user_id or not self.user_model:
+            print("Current user ID or user model is None")
+            return None
+
+        try:
+            user_data = self.user_model.get_by_id(self.current_user_id)
+            if user_data:
+                print(f"User data loaded successfully: {user_data}")
+                self.current_user_data = user_data
+                # Emit signal to update the view with the user data
+                self.user_data_loaded.emit(user_data)
+                return user_data
+            else:
+                print(f"No user found with ID: {self.current_user_id}")
+        except Exception as e:
+            print(f"Error loading user data: {str(e)}")
+        return None
+
+    def get_current_user(self):
+        """Get the current user's data"""
+        # Return cached data if available
+        if self.current_user_data:
+            return self.current_user_data
+
+        # Try to load if not cached
+        return self.load_current_user()
 
     def load_storage_data(self):
         """Load storage data from the database"""
@@ -104,6 +150,11 @@ class HomeViewModel(QObject):
     def logout(self):
         """Logout the current user"""
         if self.home_view and self.home_view.parent_window:
+            # Clear the current user data
+            self.current_user_id = None
+            self.current_user_data = None
+
+            # Return to login screen
             self.home_view.parent_window.show_login()
             return True
         return False

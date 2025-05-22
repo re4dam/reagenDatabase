@@ -84,7 +84,6 @@ class SearchView(QWidget):
         self.search_input = QLineEdit(search_bar)
         self.search_input.setPlaceholderText("Enter search term...")
         self.search_input.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
-        self.search_input.setPlaceholderText("Enter search term...")
         self.search_input.setStyleSheet(f"""padding-left: {self.scale_style(15)}px; color: black; border: none; background: transparent;""")
         self.search_input.textChanged.connect(self._perform_search)
         search_controls.addWidget(self.search_input)

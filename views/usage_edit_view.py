@@ -11,8 +11,9 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QFrame,
     QMessageBox,
+    QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSlot, QDate, QSize
+from PyQt6.QtCore import Qt, pyqtSlot, QDate, QSize, QRect
 from PyQt6.QtGui import QFont, QPixmap, QIcon
 from app_context import AppContext
 from load_font import FontManager
@@ -62,71 +63,168 @@ class UsageEditView(QWidget):
         report_bg.setScaledContents(True)
         report_bg.setGeometry(*self.scale_rect(89, 172, 1742, 830))
 
-        # Panel title
-        self.title_label = QLabel()
-        title_font = QFont()
-        title_font.setPointSize(16)
-        title_font.setBold(True)
-        self.title_label.setFont(title_font)
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(self.title_label)
-
-        # Divider
-        divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setFrameShadow(QFrame.Shadow.Sunken)
-        main_layout.addWidget(divider)
-        main_layout.addSpacing(10)
-
         # Form layout
-        form_layout = QFormLayout()
-        form_layout.setSpacing(10)
+        form_widget = QWidget(self)
+        form_widget.setGeometry(*self.scale_rect(89, 172, 1742, 830))
+        form_layout = QVBoxLayout(form_widget)
+        form_layout.setContentsMargins(20, 10, 20, 10)
 
-        # Date used field
-        self.date_used_edit = QDateEdit()
+        # Label Date
+        date_used_label = QLabel(form_widget)
+        date_used_label.setText("Date Used:")
+        date_used_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(30)))
+        date_used_label.setFixedHeight(50)
+        date_used_label.setStyleSheet("color: black; font-weight: bold;")
+        form_layout.addWidget(date_used_label)
+
+        # Field Date
+        self.date_used_edit = QDateEdit(form_widget)
         self.date_used_edit.setCalendarPopup(True)
-        form_layout.addRow("Date Used:", self.date_used_edit)
+        self.date_used_edit.setStyleSheet("""
+            QDateEdit {
+                border: none; 
+                background: rgba(0, 0, 0, 25); 
+                color: #000000
+            }
+            QDateEdit::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 40px;
+            }
+            QDateEdit::down-arrow {
+                image: url(assets/ReagenView/calendar.png);
+                width: 40px;
+                height: 40px;
+            }
+        """)
+        another_calendar = self.date_used_edit.calendarWidget()
+        another_calendar.setStyleSheet("""
+            QCalendarWidget {
+                background-color: #222;
+                border: 1px solid #555;
+                color: #ddd;
+            }
+            QCalendarWidget QToolButton {
+                background-color: #333;
+                color: #fff;
+                border: none;
+                margin: 5px;
+                font-weight: bold;
+            }
+            QCalendarWidget QToolButton:hover {
+                background-color: #444;
+            }
+            QCalendarWidget QMenu {
+                background-color: #333;
+                color: #fff;
+            }
+            QCalendarWidget QSpinBox {
+                background: #333;
+                color: #fff;
+            }
+            QCalendarWidget QAbstractItemView:enabled {
+                background-color: #111;
+                color: #ccc;
+                selection-background-color: #555;
+                selection-color: #fff;
+                gridline-color: #333;
+            }
+            QCalendarWidget QWidget#qt_calendar_navigationbar {
+                background-color: #222;
+            }
+            QCalendarWidget QAbstractItemView {
+                outline: 0;
+            }
+        """)
+        another_calendar.setFixedSize(300, 300)
+        self.date_used_edit.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(26)))
+        form_layout.addWidget(self.date_used_edit)
 
-        # Amount used field
-        self.amount_used_spin = QSpinBox()
+        spacer = QLabel("")
+        form_layout.addWidget(spacer)
+
+        # Label Amount
+        amount_used_label = QLabel(form_widget)
+        amount_used_label.setText("Amount Used:")
+        amount_used_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(30)))
+        amount_used_label.setFixedHeight(50)
+        amount_used_label.setStyleSheet("color: black; font-weight: bold;")
+        form_layout.addWidget(amount_used_label)
+
+        # Field Amount
+        self.amount_used_spin = QSpinBox(form_widget)
+        self.amount_used_spin.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(26)))
         self.amount_used_spin.setRange(1, 10000)
-        form_layout.addRow("Amount Used:", self.amount_used_spin)
+        self.amount_used_spin.setStyleSheet("border: none; background: rgba(0, 0, 0, 25); color: #000000")
+        form_layout.addWidget(self.amount_used_spin)
+
+        spacer = QLabel("")
+        form_layout.addWidget(spacer)
+
+        # Label User
+        user_label = QLabel(form_widget)
+        user_label.setText("User: ")
+        user_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(30)))
+        user_label.setFixedHeight(50)
+        user_label.setStyleSheet("color: black; font-weight: bold;")
+        form_layout.addWidget(user_label)
 
         # User field
-        self.user_edit = QLineEdit()
-        form_layout.addRow("User:", self.user_edit)
+        self.user_edit = QLineEdit(form_widget)
+        self.user_edit.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(26)))
+        self.user_edit.setStyleSheet("border: none; background: rgba(0, 0, 0, 25); color: #000000")
+        form_layout.addWidget(self.user_edit)
+
+        spacer = QLabel("")
+        form_layout.addWidget(spacer)
+
+        # Label Supporting Materials
+        supporting_materials_label = QLabel(form_widget)
+        supporting_materials_label.setText("Supporting Materials: ")
+        supporting_materials_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(30)))
+        supporting_materials_label.setFixedHeight(50)
+        supporting_materials_label.setStyleSheet("color: black; font-weight: bold;")
+        form_layout.addWidget(supporting_materials_label)
 
         # Supporting materials field
-        self.supporting_materials_edit = QTextEdit()
-        self.supporting_materials_edit.setMaximumHeight(100)
-        form_layout.addRow("Supporting Materials:", self.supporting_materials_edit)
+        self.supporting_materials_edit = QTextEdit(form_widget)
+        self.supporting_materials_edit.setMaximumHeight(250)
+        self.supporting_materials_edit.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(20)))
+        self.supporting_materials_edit.setStyleSheet("border: none; background: rgba(0, 0, 0, 25); color: #000000")
+        form_layout.addWidget(self.supporting_materials_edit)
 
-        main_layout.addLayout(form_layout)
+        spacer = QLabel("")
+        form_layout.addWidget(spacer)
 
         # Current stock information
-        self.current_stock_label = QLabel()
+        self.current_stock_label = QLabel(form_widget)
+        self.current_stock_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(24)))
         self.current_stock_label.setStyleSheet("font-weight: bold;")
-        main_layout.addWidget(self.current_stock_label)
+        form_layout.addWidget(self.current_stock_label)
 
         # Warning label for stock
-        self.stock_warning_label = QLabel()
+        self.stock_warning_label = QLabel(form_widget)
+        self.stock_warning_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(24)))
         self.stock_warning_label.setStyleSheet("color: red; font-weight: bold;")
         self.stock_warning_label.setVisible(False)
-        main_layout.addWidget(self.stock_warning_label)
+        form_layout.addWidget(self.stock_warning_label)
+
+        spacer = QLabel("")
+        form_layout.addWidget(spacer)
 
         # Save button
         self.save_button = QPushButton(self)
         save_normal = QIcon("assets/Report/icon_save.png")
         save_hover = QIcon("assets/Report/save_hover.png")
         self.save_button.setIcon(save_normal)
-        self.save_button.setIconSize(QSize(*self.scale_icon(174, 174)))
+        self.save_button.setIconSize(QSize(*self.scale_icon(155, 155)))
         self.save_button.setStyleSheet("""
             QPushButton {
                 border: none;
                 background: transparent;
             }
         """)
-        self.save_button.setGeometry(*self.scale_rect(1722, 865, 174, 174))
+        self.save_button.setGeometry(*self.scale_rect(1730, 875, 155, 155))
         self.save_button.enterEvent = lambda event: self.save_button.setIcon(save_hover)
         self.save_button.leaveEvent = lambda event: self.save_button.setIcon(save_normal)
         self.save_button.clicked.connect(self._save_usage)
@@ -152,9 +250,6 @@ class UsageEditView(QWidget):
     @pyqtSlot(dict, bool, int)
     def on_usage_loaded(self, usage_data, is_new, current_stock):
         """Update UI with usage data"""
-        self.title_label.setText(
-            f"{'Add New' if is_new else 'Edit'} Usage Report for {usage_data.get('ReagentName', '')}"
-        )
 
         if usage_data.get("Tanggal_Terpakai"):
             self.date_used_edit.setDate(
