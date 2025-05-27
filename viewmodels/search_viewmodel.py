@@ -104,31 +104,42 @@ class SearchViewModel(QObject):
             self.search_error.emit(f"Error searching reagents: {str(e)}")
 
     def view_reagent_details(self, reagent_id, storage_id):
-        """Show details for the selected reagent"""
+        """Show details for the selected reagent from search"""
         if not self.search_view or not self.search_view.parent_window:
             return False
 
-        # Get storage name from storage_id
+        # Get reagent and storage info
+        reagent = self.identity_model.get_by_id(reagent_id)
         storage = self.storage_model.get_by_id(storage_id)
-        storage_name = storage.get("Name", "Unknown") if storage else "Unknown"
 
-        # Initialize rack viewmodel for this storage
-        from viewmodels.rack_viewmodel import RackViewModel
+        if not reagent or not storage:
+            return False
 
-        if storage_id not in self.rack_viewmodels:
-            self.rack_viewmodels[storage_id] = RackViewModel(
-                self.identity_model,
-                self.storage_model,
-                self.usage_model,  # Pass usage model
-                self.supporting_model,  # Pass supporting materials model
-                storage_id,
-                storage_name,
-            )
+        storage_name = storage.get("Name", "Unknown")
 
-        # Show rack view first to ensure proper context
-        rack_vm = self.rack_viewmodels[storage_id]
-        rack_vm.create_rack_view(self.search_view.parent_window)
+        # Create reagent detail panel with search source
+        from views.reagent_view import ReagentDetailPanel
 
-        # Then show reagent details
-        rack_vm.show_reagent_details(reagent_id)
+        reagent_detail = ReagentDetailPanel(
+            self.identity_model,
+            reagent_id,
+            storage_name,
+            self.search_view,
+            previous_view="search",  # Indicate this came from search
+        )
+
+        # Connect back signal to return to search
+        reagent_detail.back_to_search_view.connect(self._return_to_search)
+
+        # Add to stacked widget and show
+        parent_window = self.search_view.parent_window
+        parent_window.stacked_widget.addWidget(reagent_detail)
+        parent_window.stacked_widget.setCurrentWidget(reagent_detail)
+
         return True
+
+    def _return_to_search(self):
+        """Return to search view"""
+        if self.search_view and self.search_view.parent_window:
+            parent_window = self.search_view.parent_window
+            parent_window.stacked_widget.setCurrentWidget(self.search_view)

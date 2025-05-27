@@ -17,6 +17,7 @@ from views.reagent_view import ReagentDetailPanel
 from app_context import AppContext
 from load_font import FontManager
 
+
 class RackView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -38,19 +39,19 @@ class RackView(QWidget):
     def set_viewmodel(self, viewmodel):
         """Set the ViewModel for this view"""
         self.rack_viewmodel = viewmodel
-    
+
     def scale_rect(self, x, y, w, h):
         screen_size = AppContext.get_screen_resolution()
         scale_x = screen_size.width() / 1920
         scale_y = screen_size.height() / 1080
         return int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)
-    
+
     def scale_icon(self, w, h):
         screen_size = AppContext.get_screen_resolution()
         scale_x = screen_size.width() / 1920
         scale_y = screen_size.height() / 1080
         return int(w * scale_x), int(h * scale_y)
-    
+
     def scale_style(self, px):
         screen_size = AppContext.get_screen_resolution()
         scale_y = screen_size.height() / 1080
@@ -63,7 +64,7 @@ class RackView(QWidget):
         rack_layout = QVBoxLayout(self.rack_panel)
         rack_layout.setContentsMargins(0, 0, 0, 0)
         screen_size = AppContext.get_screen_resolution()
-        
+
         # Create container widget for layering
         container = QWidget(self.rack_panel)
         container.setGeometry(0, 0, screen_size.width(), screen_size.height())
@@ -72,7 +73,9 @@ class RackView(QWidget):
 
         # Background layer - Lab image
         background_label = QLabel(container)
-        background_label.setPixmap(QPixmap("assets/Rack/background.png"))  # Use your actual image path
+        background_label.setPixmap(
+            QPixmap("assets/Rack/background.png")
+        )  # Use your actual image path
         background_label.setScaledContents(True)
         background_label.setGeometry(0, 0, screen_size.width(), screen_size.height())
         background_label.lower()
@@ -87,7 +90,9 @@ class RackView(QWidget):
         title_label = QLabel(container)
         self.rack_title = title_label  # Will be updated when data loads
         title_label.setGeometry(0, 0, screen_size.width(), 132)
-        title_label.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(60)))
+        title_label.setFont(
+            FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(60))
+        )
         title_label.setStyleSheet("""
             QLabel{
                 font-weight: bold;
@@ -100,7 +105,9 @@ class RackView(QWidget):
 
         # Foreground
         foreground = QLabel(container)
-        foreground.setPixmap(QPixmap("assets/Rack/foreground.png"))  # Use your actual image path
+        foreground.setPixmap(
+            QPixmap("assets/Rack/foreground.png")
+        )  # Use your actual image path
         foreground.setScaledContents(True)
         foreground.setGeometry(*self.scale_rect(89, 140, 1742, 861))
         foreground.raise_()
@@ -128,8 +135,12 @@ class RackView(QWidget):
             }
         """)
         self.add_reagent_button.setGeometry(*self.scale_rect(1722, 865, 174, 174))
-        self.add_reagent_button.enterEvent = lambda event: self.add_reagent_button.setIcon(add_hover)
-        self.add_reagent_button.leaveEvent = lambda event: self.add_reagent_button.setIcon(add_normal)
+        self.add_reagent_button.enterEvent = (
+            lambda event: self.add_reagent_button.setIcon(add_hover)
+        )
+        self.add_reagent_button.leaveEvent = (
+            lambda event: self.add_reagent_button.setIcon(add_normal)
+        )
         self.add_reagent_button.clicked.connect(self._add_new_reagent)
         self.add_reagent_button.raise_()
 
@@ -184,7 +195,9 @@ class RackView(QWidget):
         # Perubahan penting: Mengganti koneksi dari on_login_success ke _login
         self.back_button.setGeometry(*self.scale_rect(12, 12, 130, 130))
         self.back_button.enterEvent = lambda event: self.back_button.setIcon(back_hover)
-        self.back_button.leaveEvent = lambda event: self.back_button.setIcon(back_normal)
+        self.back_button.leaveEvent = lambda event: self.back_button.setIcon(
+            back_normal
+        )
         self.back_button.clicked.connect(self._go_back)
         self.back_button.raise_()
 
