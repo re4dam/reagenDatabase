@@ -31,21 +31,12 @@ class ReagentDetailPanel(QWidget):
     """
 
     back_to_rack_view = pyqtSignal()
-    back_to_search_view = pyqtSignal()  # Tambah signal baru
     refresh_requested = pyqtSignal()
     delegate = QStyledItemDelegate()
 
-    def __init__(
-        self,
-        identity_model,
-        reagent_id=None,
-        rack_name=None,
-        parent=None,
-        previous_view=None,
-    ):
+    def __init__(self, identity_model, reagent_id=None, rack_name=None, parent=None):
         super().__init__(parent)
         self.parent_widget = parent
-        self.previous_view = previous_view
 
         # Initialize the ViewModel
         self.view_model = ReagentViewModel(identity_model, reagent_id, rack_name)
@@ -1089,15 +1080,12 @@ class ReagentDetailPanel(QWidget):
                 self, "Error", "Please save the reagent before viewing usage reports."
             )
 
-    # Modify the _go_back method
     def _go_back(self):
-        """Return to the appropriate view based on source"""
-        if self.previous_view == "search":
-            self.back_to_search_view.emit()
-        else:
-            self.back_to_rack_view.emit()
+        """Return to the rack view without saving"""
+        self.back_to_rack_view.emit()
 
-        # For backward compatibility
+        # For backward compatibility with the original implementation
+        # In case the signal isn't connected, try the legacy approach
         if self.parent_widget and hasattr(self.parent_widget, "show_rack_view"):
             self.parent_widget.show_rack_view()
 
