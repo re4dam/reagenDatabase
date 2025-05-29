@@ -125,10 +125,13 @@ class SearchViewModel(QObject):
                 storage_name,
             )
 
-        # Show rack view first to ensure proper context
         rack_vm = self.rack_viewmodels[storage_id]
+        # Create_rack_view now takes the main window (LoginView) as parent_window
+        # This adds the RackView to the LoginView's main stacked_widget
         rack_vm.create_rack_view(self.search_view.parent_window)
 
-        # Then show reagent details
-        rack_vm.show_reagent_details(reagent_id)
+        # Then show reagent details, indicating it came from search
+        rack_vm.show_reagent_details(
+            reagent_id, came_from_search=True
+        )  # Pass True here
         return True

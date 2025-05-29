@@ -16,13 +16,21 @@ from views.reagent_view import ReagentDetailPanel
 
 
 class RackView(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, storage_id=None):
         super().__init__(parent)
         self.parent_window = parent
         self.rack_viewmodel = None
         self.reagents = []
         self.current_page = 0
         self.items_per_page = 10
+        self.storage_id = storage_id
+
+        self._current_detail_panel_came_from_search = (
+            False  # Store context for ReagentDetailPanel
+        )
+        self._active_usage_report_view = (
+            None  # To manage the active UsageReportView instance
+        )
 
         # Create stacked layout
         self.main_stack = QStackedLayout()
@@ -195,9 +203,43 @@ class RackView(QWidget):
         if self.rack_viewmodel:
             self.rack_viewmodel.add_new_reagent()
 
-    def _go_back(self):
+    def remove_self_from_parent_stack(self):
+        """Removes this RackView instance from its parent's QStackedWidget and clears its cache."""
+        if self.parent_window and hasattr(self.parent_window, "stacked_widget"):
+            self.parent_window.stacked_widget.removeWidget(self)
+
+            # Also remove the cached attribute from parent_window
+            if self.storage_id is not None:  # Check if storage_id was set
+                view_key = f"rack_view_{self.storage_id}"
+                if hasattr(self.parent_window, view_key):
+                    try:
+                        delattr(self.parent_window, view_key)
+                        print(
+                            f"Cleared cache key {view_key} from {self.parent_window.__class__.__name__}"
+                        )
+                    except AttributeError:
+                        print(
+                            f"Warning: Could not delete attribute {view_key} from {self.parent_window.__class__.__name__}"
+                        )
+            else:
+                print(
+                    "Warning: RackView.storage_id not set, cannot clear cache attribute by key."
+                )
+
+            self.deleteLater()  # Schedule RackView for deletion
+            print(
+                f"RackView for storage_id {self.storage_id} removed from stack and scheduled for deletion."
+            )
+
+    def _go_back(self):  # This is for RackView's own "Back to Home" button
         if self.parent_window:
-            self.parent_window.show_home()
+            # If RackView's parent is LoginView (came from search), show_home on LoginView should show HomeView
+            # If RackView's parent is HomeView (came from home), show_home on HomeView shows its main panel
+            if hasattr(self.parent_window, "show_home"):
+                self.parent_window.show_home()
+            # If RackView was on LoginView's stack, show_home should ideally remove it.
+            # This might need further refinement in LoginView.show_home() if RackViews are not cleaned up.
+            # However, for the specific user request, remove_self_from_parent_stack handles the cleanup.
 
     def show_rack_view(self):
         """Switch back to rack view from detail view"""
@@ -205,11 +247,18 @@ class RackView(QWidget):
         if self.rack_viewmodel:
             self.rack_viewmodel.load_reagents()
 
-    def show_usage_reports(self, reagent_id, reagent_name):
-        """Show the usage reports for a specific reagent"""
+    def show_usage_reports(
+        self, reagent_id, reagent_name, came_from_search_context=False
+    ):  # Accept new flag
+        """Show the usage reports for a specific reagent."""
+        # Store the context of how the ReagentDetailPanel that triggered this was opened
+        self._current_detail_panel_came_from_search = came_from_search_context
+        print(
+            f"RackView: Stored came_from_search_context = {self._current_detail_panel_came_from_search}"
+        )
+
         if self.rack_viewmodel:
             try:
-                # Get the models from the view model
                 usage_model = self.rack_viewmodel.get_usage_model()
                 identity_model = self.rack_viewmodel.get_identity_model()
 
@@ -221,33 +270,49 @@ class RackView(QWidget):
                     )
                     return
 
-                # Import here to avoid circular imports
-                from views.usage_report_view import UsageReportView
+                from views.usage_report_view import UsageReportView  # Import here
 
-                # Create the usage report view
-                self.usage_report_view = UsageReportView(
-                    usage_model, identity_model, reagent_id, reagent_name, self
+                main_stack_owner = self.parent_window  # This is LoginView or HomeView
+
+                # Clean up any previously active usage report view shown by this RackView instance
+                if self._active_usage_report_view is not None:
+                    if hasattr(main_stack_owner, "stacked_widget"):
+                        main_stack_owner.stacked_widget.removeWidget(
+                            self._active_usage_report_view
+                        )
+                    self._active_usage_report_view.deleteLater()
+                    self._active_usage_report_view = None
+
+                # Create the new usage report view
+                # The parent of UsageReportView is 'self' (RackView)
+                self._active_usage_report_view = UsageReportView(
+                    usage_model, identity_model, reagent_id, reagent_name, parent=self
                 )
 
-                # Connect signals
-                self.usage_report_view.back_clicked.connect(
-                    lambda: self._return_to_reagent_detail(reagent_id)
+                # Connect signals for the new UsageReportView instance
+                self._active_usage_report_view.back_clicked.connect(
+                    lambda r_id=reagent_id: self._return_to_reagent_detail(r_id)
                 )
-                self.usage_report_view.add_report_clicked.connect(
+                self._active_usage_report_view.add_report_clicked.connect(
                     self.show_new_usage_report
                 )
-                self.usage_report_view.edit_report_clicked.connect(
+                self._active_usage_report_view.edit_report_clicked.connect(
                     self.show_edit_usage_report
                 )
 
-                if hasattr(self.parent_window, "stacked_widget"):
-                    self.parent_window.stacked_widget.addWidget(self.usage_report_view)
-                    self.parent_window.stacked_widget.setCurrentWidget(
-                        self.usage_report_view
+                # Add and show the UsageReportView on the main application stack
+                if hasattr(main_stack_owner, "stacked_widget"):
+                    main_stack_owner.stacked_widget.addWidget(
+                        self._active_usage_report_view
+                    )
+                    main_stack_owner.stacked_widget.setCurrentWidget(
+                        self._active_usage_report_view
                     )
                 else:
                     QMessageBox.critical(
-                        self, "Error", "No stacked_widget found in parent window."
+                        self,
+                        "Error",
+                        "No stacked_widget found in parent window for UsageReportView.",
                     )
 
             except Exception as e:
@@ -268,11 +333,27 @@ class RackView(QWidget):
             )
 
     def _return_to_reagent_detail(self, reagent_id):
-        """Handles back navigation from UsageReportView to ReagentDetailPanel"""
-        self._view_reagent_details(reagent_id)
+        """Handles back navigation from UsageReportView to ReagentDetailPanel."""
+        main_stack_owner = self.parent_window  # LoginView or HomeView
 
-        # Optionally clean up the usage report view from stack
-        if self.usage_report_view:
-            self.parent_window.stacked_widget.removeWidget(self.usage_report_view)
-            self.usage_report_view.deleteLater()
-            self.usage_report_view = None
+        # Clean up the active UsageReportView from the main stack
+        if self._active_usage_report_view is not None:
+            if hasattr(main_stack_owner, "stacked_widget"):
+                main_stack_owner.stacked_widget.removeWidget(
+                    self._active_usage_report_view
+                )
+            self._active_usage_report_view.deleteLater()
+            self._active_usage_report_view = None
+
+        # Ensure RackView (self) is the current widget on its parent's stack
+        if hasattr(main_stack_owner, "stacked_widget"):
+            main_stack_owner.stacked_widget.setCurrentWidget(self)
+
+        # Re-show the Reagent Detail Panel, passing the stored 'came_from_search' context
+        if self.rack_viewmodel:
+            print(
+                f"RackView: Returning to RDP. Passing came_from_search = {self._current_detail_panel_came_from_search}"
+            )
+            self.rack_viewmodel.show_reagent_details(
+                reagent_id, came_from_search=self._current_detail_panel_came_from_search
+            )
