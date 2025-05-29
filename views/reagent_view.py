@@ -34,9 +34,17 @@ class ReagentDetailPanel(QWidget):
     refresh_requested = pyqtSignal()
     delegate = QStyledItemDelegate()
 
-    def __init__(self, identity_model, reagent_id=None, rack_name=None, parent=None):
+    def __init__(
+        self,
+        identity_model,
+        reagent_id=None,
+        rack_name=None,
+        parent=None,
+        came_from_search=False,
+    ):  # Add came_from_search
         super().__init__(parent)
-        self.parent_widget = parent
+        self.parent_widget = parent  # This is RackView
+        self.came_from_search = came_from_search  # Store the flag
 
         # Initialize the ViewModel
         self.view_model = ReagentViewModel(identity_model, reagent_id, rack_name)
@@ -1067,7 +1075,9 @@ class ReagentDetailPanel(QWidget):
             ):
                 reagent_name = self.name_edit.text()
                 self.parent_widget.show_usage_reports(
-                    self.view_model.reagent_id, reagent_name
+                    self.view_model.reagent_id,
+                    reagent_name,
+                    came_from_search_context=self.came_from_search,
                 )
             else:
                 QMessageBox.warning(
@@ -1081,13 +1091,45 @@ class ReagentDetailPanel(QWidget):
             )
 
     def _go_back(self):
-        """Return to the rack view without saving"""
-        self.back_to_rack_view.emit()
+        """Return to the rack view or search view without saving"""
+        if self.came_from_search:
+            rack_view_instance = self.parent_widget  # This is the RackView instance
+            # RackView's parent_window was set to LoginView when created from SearchViewModel
+            main_app_window = rack_view_instance.parent_window
 
-        # For backward compatibility with the original implementation
-        # In case the signal isn't connected, try the legacy approach
-        if self.parent_widget and hasattr(self.parent_widget, "show_rack_view"):
-            self.parent_widget.show_rack_view()
+            if (
+                main_app_window
+                and hasattr(main_app_window, "search_widget")
+                and main_app_window.search_widget
+                and main_app_window.__class__.__name__ == "LoginView"
+            ):
+                # 1. Remove ReagentDetailPanel from RackView's internal stack
+                rack_view_instance.main_stack.removeWidget(self)
+
+                # 2. Tell RackView to remove itself from LoginView's main stack and delete itself
+                if hasattr(rack_view_instance, "remove_self_from_parent_stack"):
+                    rack_view_instance.remove_self_from_parent_stack()
+
+                # 3. Set LoginView's current widget to the search_widget
+                main_app_window.stacked_widget.setCurrentWidget(
+                    main_app_window.search_widget
+                )
+
+                self.deleteLater()  # Schedule ReagentDetailPanel for deletion
+                return
+
+            # Fallback if the direct navigation to search fails (should be rare)
+            if rack_view_instance and hasattr(rack_view_instance, "show_rack_view"):
+                rack_view_instance.show_rack_view()  # Go back to rack's grid
+            elif self.parent_widget and hasattr(
+                self.parent_widget, "show_rack_view"
+            ):  # General fallback
+                self.parent_widget.show_rack_view()
+
+        else:  # Original behavior (when ReagentDetailPanel was opened from RackView directly)
+            # self.back_to_rack_view.emit() # This signal might not be connected/used based on current code
+            if self.parent_widget and hasattr(self.parent_widget, "show_rack_view"):
+                self.parent_widget.show_rack_view()
 
     def resizeEvent(self, event):
         """Handle resize events to scale the image properly"""
