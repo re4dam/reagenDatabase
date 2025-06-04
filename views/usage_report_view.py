@@ -10,8 +10,9 @@ from PyQt6.QtWidgets import (
     QFrame,
     QHeaderView,
     QMessageBox,
+    QFileDialog,  # Import QFileDialog
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
 from viewmodels.usage_report_viewmodel import UsageReportViewModel
 
 
@@ -20,6 +21,8 @@ class UsageReportView(QWidget):
     back_clicked = pyqtSignal()
     add_report_clicked = pyqtSignal(int, str)
     edit_report_clicked = pyqtSignal(int, int, str)
+    # Add a new signal for export
+    export_report_requested = pyqtSignal(int, str)  # reagent_id, file_path
 
     def __init__(
         self, usage_model, identity_model, reagent_id, reagent_name, parent=None
@@ -38,6 +41,8 @@ class UsageReportView(QWidget):
 
         # Connect view model signals
         self.view_model.data_changed.connect(self._refresh_table)
+        # Connect the new signal from view model for export feedback
+        self.view_model.export_finished.connect(self._on_export_finished)
 
         # Load initial data
         self.refresh_data()
@@ -63,7 +68,7 @@ class UsageReportView(QWidget):
 
         # Table for displaying usage reports
         self.table_widget = QTableWidget()
-        self.table_widget.setColumnCount(5)
+        self.table_widget.setColumnCount(5)  # Adjusted for actions
         self.table_widget.setHorizontalHeaderLabels(
             ["Date Used", "Amount Used", "User", "Supporting Materials", "Actions"]
         )
@@ -90,6 +95,19 @@ class UsageReportView(QWidget):
         )
         self.new_report_button.clicked.connect(self._on_add_new_report)
         button_layout.addWidget(self.new_report_button)
+
+        # Export to XLSX button
+        self.export_button = QPushButton("Export to XLSX")
+        self.export_button.setMinimumHeight(40)
+        self.export_button.setStyleSheet(
+            "QPushButton { background-color: #cceeff; border: 2px solid #66aabb; "  # Example style
+            "border-radius: 5px; font-weight: bold; }"
+            "QPushButton:hover { background-color: #a3ccdd; }"
+        )
+        self.export_button.clicked.connect(
+            self._on_export_report
+        )  # Connect to new handler
+        button_layout.addWidget(self.export_button)
 
         # Back button
         self.back_button = QPushButton("Back to Reagent Details")
@@ -201,14 +219,38 @@ class UsageReportView(QWidget):
         """Handler for back button click"""
         self.back_clicked.emit()
 
-        # For backward compatibility with the original implementation
-        # In case the signal isn't connected, try the legacy approach
-        # if self.parent_widget and hasattr(self.parent_widget, "show_rack_view"):
-        #     self.parent_widget.show_rack_view()
-
     def refresh_data(self):
         """Refresh the usage data display"""
         try:
             self.view_model.load_usage_data(self.reagent_id)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load usage data: {str(e)}")
+
+    def _on_export_report(self):
+        """Handle export report button click."""
+        # Open a file dialog to get the save path
+        # The default name could include the reagent name and current date
+        default_filename = f"{self.reagent_name.replace(' ', '_')}_usage_report.xlsx"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Usage Report",
+            default_filename,  # Default file name
+            "Excel Files (*.xlsx)",
+        )
+
+        if file_path:
+            # Emit the signal with reagent_id and chosen file_path
+            # self.export_report_requested.emit(self.reagent_id, file_path) # Old signal
+            # Call viewmodel directly
+            if self.view_model:
+                self.view_model.export_usage_data_to_xlsx(
+                    self.reagent_id, file_path, self.reagent_name
+                )
+
+    @pyqtSlot(bool, str)
+    def _on_export_finished(self, success, message):
+        """Handle feedback from the export process."""
+        if success:
+            QMessageBox.information(self, "Export Successful", message)
+        else:
+            QMessageBox.warning(self, "Export Failed", message)
