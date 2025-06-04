@@ -42,6 +42,8 @@ class RegisterViewModel(QObject):
 
         # Switch to register widget
         parent_window.stacked_widget.setCurrentWidget(parent_window.register_widget)
+        if hasattr(parent_window.register_widget, "InTransition"):
+            parent_window.register_widget.InTransition()            
         return True
 
     def register_user(self, username, first_name, last_name, password):

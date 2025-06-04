@@ -8,8 +8,9 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QMessageBox,
+    QGraphicsOpacityEffect,
 )
-from PyQt6.QtCore import pyqtSlot, QSize
+from PyQt6.QtCore import pyqtSlot, QSize, QPropertyAnimation, QSequentialAnimationGroup, QParallelAnimationGroup, QEasingCurve, QPoint
 from PyQt6.QtGui import QPixmap, QIcon
 from app_context import AppContext
 
@@ -30,6 +31,7 @@ class LoginView(QMainWindow):
         # Create the login widget
         self.login_widget = QWidget()
         self._setup_login_ui()
+        self.firstOpenAnimation()
 
         # Add login widget to stacked widget
         self.stacked_widget.addWidget(self.login_widget)
@@ -68,11 +70,57 @@ class LoginView(QMainWindow):
         scale_y = screen_size.height() / 1080
         return int(px * scale_y)
     
+    def firstOpenAnimation(self):
+        self.sequence = QSequentialAnimationGroup(self)
+
+        self.bg_animation = QPropertyAnimation(self.background_label_effect, b"opacity")
+        self.bg_animation.setDuration(500)
+        self.bg_animation.setStartValue(0.0)
+        self.bg_animation.setEndValue(1.0)
+        self.bg_animation.setEasingCurve(QEasingCurve.Type.OutExpo)
+
+        self.panel_animation = QPropertyAnimation(self.panel_main, b"pos")
+        self.panel_animation.setDuration(1000)
+        panel_current_pos = self.panel_main.pos()
+        self.panel_animation.setStartValue(panel_current_pos)
+        self.panel_animation.setEndValue(QPoint(panel_current_pos.x(), panel_current_pos.y() - 1080))
+        self.panel_animation.setEasingCurve(QEasingCurve.Type.OutBack)
+
+        self.sequence.addAnimation(self.bg_animation)
+        self.sequence.addAnimation(self.panel_animation)
+        self.sequence.start()
+
+    def OutTransition(self):
+        self.sequence = QParallelAnimationGroup(self)
+
+        self.bg_animation = QPropertyAnimation(self.background_label_effect, b"opacity")
+        self.bg_animation.setDuration(750)
+        self.bg_animation.setStartValue(0.0)
+        self.bg_animation.setEndValue(1.0)
+        self.bg_animation.setEasingCurve(QEasingCurve.Type.InExpo)
+
+        self.prevpanel_animation = QPropertyAnimation(self.prevpanel_label, b"pos")
+        self.prevpanel_animation.setDuration(1500)
+        prevpanel_current_pos = self.prevpanel_label.pos()
+        self.prevpanel_animation.setStartValue(prevpanel_current_pos)
+        self.prevpanel_animation.setEndValue(QPoint(prevpanel_current_pos.x() + 1920, prevpanel_current_pos.y()))
+        self.prevpanel_animation.setEasingCurve(QEasingCurve.Type.InOutBack)
+
+        self.panel_animation = QPropertyAnimation(self.panel_main, b"pos")
+        self.panel_animation.setDuration(1500)
+        panel_current_pos = self.panel_main.pos()
+        self.panel_animation.setStartValue(panel_current_pos)
+        self.panel_animation.setEndValue(QPoint(panel_current_pos.x() + 1920, panel_current_pos.y()))
+        self.panel_animation.setEasingCurve(QEasingCurve.Type.InOutBack)
+
+        self.sequence.addAnimation(self.bg_animation)
+        self.sequence.addAnimation(self.prevpanel_animation)
+        self.sequence.addAnimation(self.panel_animation)
+        self.sequence.start()
+
     def _setup_login_ui(self):
         """Set up the UI components for the login page"""
         # Parent layout of login_widget
-        layout = QVBoxLayout(self.login_widget)
-        layout.setContentsMargins(0, 0, 0, 0)
         screen_size = AppContext.get_screen_resolution()
         print(screen_size.width(), screen_size.height())
 
@@ -83,48 +131,68 @@ class LoginView(QMainWindow):
         container_layout.setContentsMargins(0, 0, 0, 0)
 
         ## Elemen layer ##
+
+        #Prev Background
+        self.prevbackground_label = QLabel(container)
+        self.prevbackground_label.setPixmap(QPixmap("assets/Login/Register_bg.png"))
+        self.prevbackground_label.setScaledContents(True)
+        self.prevbackground_label.setGeometry(0, 0, screen_size.width(), screen_size.height())
+        self.prevbackground_label_effect = QGraphicsOpacityEffect(self.prevbackground_label)
+        self.prevbackground_label.setGraphicsEffect(self.prevbackground_label_effect)
+        self.prevbackground_label_effect.setOpacity(0.0)
+
         #Background
-        background_label = QLabel(container)
-        background_label.setPixmap(QPixmap("assets/login/Login.png"))
-        background_label.setScaledContents(True)
-        background_label.setGeometry(0, 0, screen_size.width(), screen_size.height())
+        self.background_label = QLabel(container)
+        self.background_label.setPixmap(QPixmap("assets/login/Login.png"))
+        self.background_label.setScaledContents(True)
+        self.background_label.setGeometry(0, 0, screen_size.width(), screen_size.height())
+        self.background_label_effect = QGraphicsOpacityEffect(self.background_label)
+        self.background_label.setGraphicsEffect(self.background_label_effect)
+        self.background_label_effect.setOpacity(0.0)
+
+        # Prev Foreground panel
+        self.prevpanel_label = QLabel(container)
+        self.prevpanel_label.setPixmap(QPixmap("assets/Login/register_panel.png"))
+        self.prevpanel_label.setScaledContents(True)
+        self.prevpanel_label.setGeometry(*self.scale_rect(54, 22, 1812, 1012))
+        self.prevpanel_label_effect = QGraphicsOpacityEffect(self.prevpanel_label)
+        self.prevpanel_label.setGraphicsEffect(self.prevpanel_label_effect)
+        self.prevpanel_label_effect.setOpacity(0.0)
+
+        self.panel_main = QWidget(container)
+        self.panel_main.setGeometry(*self.scale_rect(54, 1102, 1812, 1012))
 
         # Foreground panel (main panel)
-        panel_label = QLabel(container)
+        panel_label = QLabel(self.panel_main)
         panel_label.setPixmap(QPixmap("assets/login/Login2.png"))
         panel_label.setScaledContents(True)
-        panel_label.setGeometry(*self.scale_rect(54, 22, 1812, 1012))
-        panel_label.raise_()  # put it on top of background
+        panel_label.setGeometry(*self.scale_rect(0, 0, 1812, 1012))
         
         #Logo
-        logo = QLabel(container)
+        logo = QLabel(self.panel_main)
         logo.setPixmap(QPixmap("assets/logo.png"))
         logo.setScaledContents(True)
-        logo.setGeometry(*self.scale_rect(85, 49, 673, 93))
-        logo.raise_()
+        logo.setGeometry(*self.scale_rect(31, 27, 673, 93))
 
         #Tulisan Login
-        login_text = QLabel(container)
+        login_text = QLabel(self.panel_main)
         login_text.setPixmap(QPixmap("assets/login/LoginText.png"))
         login_text.setScaledContents(True)
-        login_text.setGeometry(*self.scale_rect(397, 231, 211, 51))
-        login_text.raise_()
+        login_text.setGeometry(*self.scale_rect(343, 209, 211, 51))
 
         #Tulisan Selamat Datang
-        Welcome = QLabel(container)
+        Welcome = QLabel(self.panel_main)
         Welcome.setPixmap(QPixmap("assets/login/selamat_datang.png"))
         Welcome.setScaledContents(True)
-        Welcome.setGeometry(*self.scale_rect(85, 351, 425, 52))
-        Welcome.raise_()
+        Welcome.setGeometry(*self.scale_rect(31, 329, 425, 52))
 
         #Username
-        username = QLabel(container)
+        username = QLabel(self.panel_main)
         username.setPixmap(QPixmap("assets/login/username.png"))
         username.setScaledContents(True)
-        username.setGeometry(*self.scale_rect(85, 444, 174, 28))
-        username.raise_()
+        username.setGeometry(*self.scale_rect(31, 422, 174, 28))
         
-        self.username_input = QLineEdit(container)
+        self.username_input = QLineEdit(self.panel_main)
         self.username_input.setPlaceholderText("Masukkan username")
         self.username_input.setStyleSheet(f"""
             QLineEdit {{
@@ -140,17 +208,15 @@ class LoginView(QMainWindow):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.username_input.setGeometry(*self.scale_rect(85, 492, 843, 74))
-        self.username_input.raise_()
+        self.username_input.setGeometry(*self.scale_rect(31, 470, 843, 74))
 
         #Password
-        password = QLabel(container)
+        password = QLabel(self.panel_main)
         password.setPixmap(QPixmap("assets/login/password.png"))
         password.setScaledContents(True)
-        password.setGeometry(*self.scale_rect(85, 608, 169, 29))
-        password.raise_()
+        password.setGeometry(*self.scale_rect(31, 586, 169, 29))
 
-        self.password_input = QLineEdit(container)
+        self.password_input = QLineEdit(self.panel_main)
         self.password_input.setPlaceholderText("Masukkan password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setStyleSheet(f"""
@@ -167,10 +233,9 @@ class LoginView(QMainWindow):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.password_input.setGeometry(*self.scale_rect(85, 661, 843, 74))
-        self.password_input.raise_()
+        self.password_input.setGeometry(*self.scale_rect(31, 639, 843, 74))
 
-        self.toggle_password_btn = QPushButton(container)
+        self.toggle_password_btn = QPushButton(self.panel_main)
         eye_icon = QIcon("assets/Login/icon_eye.png")
         self.toggle_password_btn.setIcon(eye_icon)
         self.toggle_password_btn.setIconSize(QSize(*self.scale_icon(40, 40)))
@@ -181,11 +246,10 @@ class LoginView(QMainWindow):
             }
         """)
         self.toggle_password_btn.clicked.connect(self.eyeClicked)
-        self.toggle_password_btn.setGeometry(*self.scale_rect(868, 679, 40, 40))
-        self.toggle_password_btn.raise_()
+        self.toggle_password_btn.setGeometry(*self.scale_rect(814, 657, 40, 40))
 
         # Register
-        register = QPushButton(container)
+        register = QPushButton(self.panel_main)
         icon_normal = QIcon("assets/Login/register.png")
         icon_hover = QIcon("assets/Login/register2.png")
         register.setIcon(icon_normal)
@@ -196,14 +260,13 @@ class LoginView(QMainWindow):
                 background-color: transparent;
             }
         """)
-        register.setGeometry(*self.scale_rect(500, 751, 420, 26))
+        register.setGeometry(*self.scale_rect(446, 729, 420, 26))
         register.enterEvent = lambda event: register.setIcon(icon_hover)
         register.leaveEvent = lambda event: register.setIcon(icon_normal)
         register.clicked.connect(self._show_register)
-        register.raise_()
 
         #Login
-        login_toggle = QPushButton(container)
+        login_toggle = QPushButton(self.panel_main)
         login_normal = QIcon("assets/Login/LoginButton.png")
         login_hover = QIcon("assets/Login/LoginButtonHover.png")
         login_toggle.setIcon(login_normal)
@@ -215,16 +278,10 @@ class LoginView(QMainWindow):
             }
         """)
         # Perubahan penting: Mengganti koneksi dari on_login_success ke _login
-        login_toggle.setGeometry(*self.scale_rect(134, 939, 745, 68))
+        login_toggle.setGeometry(*self.scale_rect(80, 917, 745, 68))
         login_toggle.enterEvent = lambda event: login_toggle.setIcon(login_hover)
         login_toggle.leaveEvent = lambda event: login_toggle.setIcon(login_normal)
         login_toggle.clicked.connect(self._login)
-        login_toggle.raise_()
-
-        ## Elemen layer ##
-
-        # Tambah widget ke layout utama
-        layout.addWidget(container)
     
     def eyeClicked(self):
         if self.password_input.echoMode() == QLineEdit.EchoMode.Password:
@@ -253,6 +310,7 @@ class LoginView(QMainWindow):
 
     @pyqtSlot(int)
     def on_login_success(self, user_id):
+        self.panel_main.setGeometry(*self.scale_rect(-1866, 22, 1812, 1012))
         """Handle successful login"""
         try:
             # Set the user ID in the home viewmodel
@@ -274,6 +332,10 @@ class LoginView(QMainWindow):
         QMessageBox.warning(self, "Login Failed", message)
 
     def _show_register(self):
+        self.panel_main.setGeometry(*self.scale_rect(-1866, 22, 1812, 1012))
+        self.prevbackground_label_effect.setOpacity(1.0)
+        self.prevpanel_label_effect.setOpacity(1.0)
+
         """Show the register widget"""
         if self.register_viewmodel:
             self.register_viewmodel.show_register_view(self)
@@ -286,6 +348,24 @@ class LoginView(QMainWindow):
         # Clear sensitive data
         self.username_input.clear()
         self.password_input.clear()
+        
+        self.prevpanel_label.setGeometry(*self.scale_rect(54, 22, 1812, 1012))
+        self.OutTransition()
+
+        # Switch to login widget
+        self.stacked_widget.setCurrentWidget(self.login_widget)
+
+    def show_login_from_home(self):
+        """Switch back to the login widget"""
+        # Reset window title and size for login view
+        self.setWindowTitle("SiMaLab")
+
+        # Clear sensitive data
+        self.username_input.clear()
+        self.password_input.clear()
+        
+        self.panel_main.setGeometry(*self.scale_rect(54, 1102, 1812, 1012))
+        self.firstOpenAnimation()
 
         # Switch to login widget
         self.stacked_widget.setCurrentWidget(self.login_widget)

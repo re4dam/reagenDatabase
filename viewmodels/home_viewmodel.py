@@ -161,6 +161,6 @@ class HomeViewModel(QObject):
             self.current_user_data = None
 
             # Return to login screen
-            self.home_view.parent_window.show_login()
+            self.home_view.parent_window.show_login_from_home()
             return True
         return False

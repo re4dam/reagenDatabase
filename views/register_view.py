@@ -6,8 +6,9 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QPushButton,
     QMessageBox,
+    QGraphicsOpacityEffect,
 )
-from PyQt6.QtCore import pyqtSlot, QSize
+from PyQt6.QtCore import pyqtSlot, QSize, QPropertyAnimation, QParallelAnimationGroup, QEasingCurve, QPoint
 from PyQt6.QtGui import QPixmap, QIcon
 from app_context import AppContext
 
@@ -17,6 +18,7 @@ class RegisterView(QWidget):
         self.parent_window = parent  # Store reference to parent
         self.register_viewmodel = None
         self._setup_ui()
+        self.InTransition()
 
     def set_viewmodel(self, viewmodel):
         """Set the ViewModel for this view"""
@@ -44,9 +46,35 @@ class RegisterView(QWidget):
         scale_y = screen_size.height() / 1080
         return int(px * scale_y)
     
+    def InTransition(self):
+        self.sequence = QParallelAnimationGroup(self)
+
+        self.bg_animation = QPropertyAnimation(self.background_label_effect, b"opacity")
+        self.bg_animation.setDuration(750)
+        self.bg_animation.setStartValue(0.0)
+        self.bg_animation.setEndValue(1.0)
+        self.bg_animation.setEasingCurve(QEasingCurve.Type.InExpo)
+
+        self.prevpanel_animation = QPropertyAnimation(self.prevpanel_label, b"pos")
+        self.prevpanel_animation.setDuration(1500)
+        prevpanel_current_pos = self.prevpanel_label.pos()
+        self.prevpanel_animation.setStartValue(prevpanel_current_pos)
+        self.prevpanel_animation.setEndValue(QPoint(prevpanel_current_pos.x() - 1920, prevpanel_current_pos.y()))
+        self.prevpanel_animation.setEasingCurve(QEasingCurve.Type.InOutBack)
+
+        self.panel_animation = QPropertyAnimation(self.panel_main, b"pos")
+        self.panel_animation.setDuration(1500)
+        panel_current_pos = self.panel_main.pos()
+        self.panel_animation.setStartValue(panel_current_pos)
+        self.panel_animation.setEndValue(QPoint(panel_current_pos.x() - 1920, panel_current_pos.y()))
+        self.panel_animation.setEasingCurve(QEasingCurve.Type.InOutBack)
+
+        self.sequence.addAnimation(self.prevpanel_animation)
+        self.sequence.addAnimation(self.bg_animation)
+        self.sequence.addAnimation(self.panel_animation)
+        self.sequence.start()
+    
     def _setup_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
         screen_size = AppContext.get_screen_resolution()
 
         # Create container widget to allow layering
@@ -56,41 +84,59 @@ class RegisterView(QWidget):
         container_layout.setContentsMargins(0, 0, 0, 0)
 
         ## Elemen layer ##
+        #Previous Layer
         #Background
-        background_label = QLabel(container)
-        background_label.setPixmap(QPixmap("assets/Register/Register.png"))
-        background_label.setScaledContents(True)
-        background_label.setGeometry(0, 0, screen_size.width(), screen_size.height())
+        self.prevbackground_label = QLabel(container)
+        self.prevbackground_label.setPixmap(QPixmap("assets/Register/Login_2.png"))
+        self.prevbackground_label.setScaledContents(True)
+        self.prevbackground_label.setGeometry(0, 0, screen_size.width(), screen_size.height())
+        self.prevbackground_label_effect = QGraphicsOpacityEffect(self.prevbackground_label)
+        self.prevbackground_label.setGraphicsEffect(self.prevbackground_label_effect)
+        self.prevbackground_label_effect.setOpacity(1.0)
+
+        #Background
+        self.background_label = QLabel(container)
+        self.background_label.setPixmap(QPixmap("assets/Register/Register.png"))
+        self.background_label.setScaledContents(True)
+        self.background_label.setGeometry(0, 0, screen_size.width(), screen_size.height())
+        self.background_label_effect = QGraphicsOpacityEffect(self.background_label)
+        self.background_label.setGraphicsEffect(self.background_label_effect)
+        self.background_label_effect.setOpacity(0.0)
 
         # Foreground panel (main panel)
-        panel_label = QLabel(container)
+        self.prevpanel_label = QLabel(container)
+        self.prevpanel_label.setPixmap(QPixmap("assets/Register/panel_login.png"))
+        self.prevpanel_label.setScaledContents(True)
+        self.prevpanel_label.setGeometry(*self.scale_rect(54, 22, 1812, 1012))
+
+        self.panel_main = QWidget(container)
+        self.panel_main.setGeometry(*self.scale_rect(1974, 22, 1812, 1012))
+
+        # Foreground panel (main panel)
+        panel_label = QLabel(self.panel_main)
         panel_label.setPixmap(QPixmap("assets/Register/Register2.png"))
         panel_label.setScaledContents(True)
-        panel_label.setGeometry(*self.scale_rect(54, 22, 1812, 1012))
-        panel_label.raise_()  # put it on top of background
+        panel_label.setGeometry(*self.scale_rect(0, 0, 1812, 1012))
 
         #Logo
-        logo = QLabel(container)
+        logo = QLabel(self.panel_main)
         logo.setPixmap(QPixmap("assets/logo.png"))
         logo.setScaledContents(True)
-        logo.setGeometry(*self.scale_rect(85, 49, 673, 93))
-        logo.raise_()
+        logo.setGeometry(*self.scale_rect(31, 27, 673, 93))
 
         #Tulisan Register
-        register_text = QLabel(container)
+        register_text = QLabel(self.panel_main)
         register_text.setPixmap(QPixmap("assets/Register/RegisterText.png"))
         register_text.setScaledContents(True)
-        register_text.setGeometry(*self.scale_rect(1255, 69, 325, 51))
-        register_text.raise_()
+        register_text.setGeometry(*self.scale_rect(1201, 47, 325, 51))
 
         #First Name
-        firstname = QLabel(container)
+        firstname = QLabel(self.panel_main)
         firstname.setPixmap(QPixmap("assets/Register/firstname.png"))
         firstname.setScaledContents(True)
-        firstname.setGeometry(*self.scale_rect(995, 194, 183, 28))
-        firstname.raise_()
+        firstname.setGeometry(*self.scale_rect(941, 172, 183, 28))
         
-        self.firstname_input = QLineEdit(container)
+        self.firstname_input = QLineEdit(self.panel_main)
         self.firstname_input.setPlaceholderText("First Name")
         self.firstname_input.setStyleSheet(f"""
             QLineEdit {{
@@ -106,17 +152,15 @@ class RegisterView(QWidget):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.firstname_input.setGeometry(*self.scale_rect(995, 247, 843, 74))
-        self.firstname_input.raise_()
+        self.firstname_input.setGeometry(*self.scale_rect(941, 225, 843, 74))
 
         #Last Name
-        lastname = QLabel(container)
+        lastname = QLabel(self.panel_main)
         lastname.setPixmap(QPixmap("assets/Register/lastname.png"))
         lastname.setScaledContents(True)
-        lastname.setGeometry(*self.scale_rect(995, 357, 180, 28))
-        lastname.raise_()
+        lastname.setGeometry(*self.scale_rect(941, 335, 180, 28))
         
-        self.lastname_input = QLineEdit(container)
+        self.lastname_input = QLineEdit(self.panel_main)
         self.lastname_input.setPlaceholderText("Last Name")
         self.lastname_input.setStyleSheet(f"""
             QLineEdit {{
@@ -132,17 +176,15 @@ class RegisterView(QWidget):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.lastname_input.setGeometry(*self.scale_rect(995, 406, 843, 74))
-        self.lastname_input.raise_()
+        self.lastname_input.setGeometry(*self.scale_rect(941, 384, 843, 74))
 
         #Username
-        username = QLabel(container)
+        username = QLabel(self.panel_main)
         username.setPixmap(QPixmap("assets/login/username.png"))
         username.setScaledContents(True)
-        username.setGeometry(*self.scale_rect(995, 512, 174, 28))
-        username.raise_()
+        username.setGeometry(*self.scale_rect(941, 490, 174, 28))
         
-        self.username_input = QLineEdit(container)
+        self.username_input = QLineEdit(self.panel_main)
         self.username_input.setPlaceholderText("Masukkan username")
         self.username_input.setStyleSheet(f"""
             QLineEdit {{
@@ -158,17 +200,15 @@ class RegisterView(QWidget):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.username_input.setGeometry(*self.scale_rect(995, 559, 843, 74))
-        self.username_input.raise_()
+        self.username_input.setGeometry(*self.scale_rect(941, 537, 843, 74))
 
         #Password
-        password = QLabel(container)
+        password = QLabel(self.panel_main)
         password.setPixmap(QPixmap("assets/login/password.png"))
         password.setScaledContents(True)
-        password.setGeometry(*self.scale_rect(995, 667, 169, 29))
-        password.raise_()
+        password.setGeometry(*self.scale_rect(941, 645, 169, 29))
 
-        self.password_input = QLineEdit(container)
+        self.password_input = QLineEdit(self.panel_main)
         self.password_input.setPlaceholderText("Masukkan password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setStyleSheet(f"""
@@ -185,10 +225,9 @@ class RegisterView(QWidget):
                 border: 1px solid #007BFF;
             }}
         """)
-        self.password_input.setGeometry(*self.scale_rect(995, 714, 843, 74))
-        self.password_input.raise_()
+        self.password_input.setGeometry(*self.scale_rect(941, 692, 843, 74))
 
-        self.toggle_password_btn = QPushButton(container)
+        self.toggle_password_btn = QPushButton(self.panel_main)
         eye_icon = QIcon("assets/Login/icon_eye.png")
         self.toggle_password_btn.setIcon(eye_icon)
         self.toggle_password_btn.setIconSize(QSize(*self.scale_icon(40, 40)))
@@ -199,11 +238,10 @@ class RegisterView(QWidget):
             }
         """)
         self.toggle_password_btn.clicked.connect(self.eyeClicked)
-        self.toggle_password_btn.setGeometry(*self.scale_rect(1778, 731, 40, 40))
-        self.toggle_password_btn.raise_()
+        self.toggle_password_btn.setGeometry(*self.scale_rect(1724, 709, 40, 40))
 
         # Kembali ke Login
-        back_to_login = QPushButton(container)
+        back_to_login = QPushButton(self.panel_main)
         icon_normal = QIcon("assets/Register/Login.png")
         icon_hover = QIcon("assets/Register/LoginHover.png")
         back_to_login.setIcon(icon_normal)
@@ -214,14 +252,13 @@ class RegisterView(QWidget):
                 background-color: transparent;
             }
         """)
-        back_to_login.setGeometry(*self.scale_rect(1369, 805, 463, 26))
+        back_to_login.setGeometry(*self.scale_rect(1315, 783, 463, 26))
         back_to_login.enterEvent = lambda event: back_to_login.setIcon(icon_hover)
         back_to_login.leaveEvent = lambda event: back_to_login.setIcon(icon_normal)
         back_to_login.clicked.connect(self._back_to_login)
-        back_to_login.raise_()
 
         # Tombol Register
-        register_button = QPushButton(container)
+        register_button = QPushButton(self.panel_main)
         register_normal = QIcon("assets/Register/RegisterButton.png")
         register_hover = QIcon("assets/Register/RegisterButtonHover.png")
         register_button.setIcon(register_normal)
@@ -233,16 +270,12 @@ class RegisterView(QWidget):
             }
         """)
         # Ubah koneksi ke fungsi _register
-        register_button.setGeometry(*self.scale_rect(1044, 939, 745, 68))
+        register_button.setGeometry(*self.scale_rect(990, 917, 745, 68))
         register_button.enterEvent = lambda event: register_button.setIcon(register_hover)
         register_button.leaveEvent = lambda event: register_button.setIcon(register_normal)
         register_button.clicked.connect(self._register)
-        register_button.raise_()
 
         ## Elemen layer ##
-
-        # Tambah widget ke layout utama
-        main_layout.addWidget(container)
 
     def eyeClicked(self):
         if self.password_input.echoMode() == QLineEdit.EchoMode.Password:
@@ -287,6 +320,8 @@ class RegisterView(QWidget):
         QMessageBox.warning(self, "Registration Error", message)
 
     def _back_to_login(self):
+        self.panel_main.setGeometry(*self.scale_rect(1974, 22, 1812, 1012))
+        self.prevpanel_label.setGeometry(*self.scale_rect(54, 22, 1812, 1012))
         """Return to login window"""
         if hasattr(self.parent_window, "show_login"):
             self.parent_window.show_login()
