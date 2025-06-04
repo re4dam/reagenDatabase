@@ -34,32 +34,38 @@ class HomeViewModel(QObject):
 
     def create_home_view(self, parent_window):
         """Create and show the home view"""
-        from views.home_view import HomeView
+        from views.home_view import HomeView  # Keep import here
 
         if not parent_window:
             return False
 
-        # Create the home view if it doesn't exist
+        # Flag to check if a new view instance was created
+        # view_already_existed = hasattr(parent_window, "home_widget") and parent_window.home_widget is not None
+
         if not hasattr(parent_window, "home_widget") or not parent_window.home_widget:
             parent_window.home_widget = HomeView(parent_window)
             parent_window.stacked_widget.addWidget(parent_window.home_widget)
 
             # Set home view reference
             self.home_view = parent_window.home_widget
-            self.home_view.set_viewmodel(self)
+            self.home_view.set_viewmodel(self)  # This calls _setup_main_ui
 
             # Connect signals
             self.storage_data_loaded.connect(self.home_view.on_storage_data_loaded)
             self.storage_error.connect(self.home_view.on_storage_error)
-            self.user_data_loaded.connect(self.home_view.set_user_data)
+            self.user_data_loaded.connect(
+                self.home_view.set_user_data
+            )  # Crucial connection
 
-            # Load initial data
+            # Load initial data like storage
             self.load_storage_data()
 
-        # If current_user_id is set, load the user data
-        # if self.current_user_id:
-        #     print(f"Loading data for user ID: {self.current_user_id}")
-        #     self.load_current_user()
+        # If current_user_id is set (i.e., a user is logged in), load their data.
+        # This ensures that if the view already existed (e.g., after logout and new login),
+        # the new user's data is loaded and the user_data_loaded signal is emitted.
+        if self.current_user_id:
+            # print(f"HomeViewModel:create_home_view - Loading data for user ID: {self.current_user_id}")
+            self.load_current_user()  # This will emit user_data_loaded
 
         # Switch to home widget
         parent_window.stacked_widget.setCurrentWidget(parent_window.home_widget)

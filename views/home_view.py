@@ -129,6 +129,7 @@ from load_font import FontManager
 #         )
 #         layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
+
 class AboutDialog(QDialog):
     """Dialog to display About information"""
 
@@ -200,6 +201,7 @@ class AboutDialog(QDialog):
         )
         layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
+
 class HomeView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -210,11 +212,15 @@ class HomeView(QWidget):
         self.rack_views = {}
         self.current_user = None
 
+        # Intialize sidebar user info labels as instance attributes
+        self.fullname_value_label = None
+        self.username_value_label = None
+
         # Create stacked widget for views
         self.stacked_widget = QStackedWidget(self)
 
         # Create main view
-        self.main_view = QWidget() 
+        self.main_view = QWidget()
 
         # Add main view to stacked widget
         self.stacked_widget.addWidget(self.main_view)
@@ -232,29 +238,40 @@ class HomeView(QWidget):
     def set_viewmodel(self, viewmodel):
         """Set the ViewModel for this view"""
         self.home_viewmodel = viewmodel
-        self._setup_main_ui()
-        
+        self._setup_main_ui()  # Setup UI after viewmodel is set
+
+        # Explicitly try to get user data when viewmodel is set,
+        # especially if the view is being reused.
+        if self.home_viewmodel and self.home_viewmodel.current_user_id:
+            cached_user_data = self.home_viewmodel.get_current_user()
+            if cached_user_data:  # If user data was already in ViewModel (e.g. cached)
+                self.set_user_data(cached_user_data)
+            # If not cached, get_current_user would have triggered load_current_user in VM,
+            # which emits user_data_loaded, and set_user_data will be called.
+
+    @pyqtSlot(dict)
     def set_user_data(self, user_data):
-        """Set the current user's data"""
-        self.current_user = user_data
+        """Set the current user's data and update the UI."""
+        self.current_user = user_data  # Update HomeView's own record of the user
+        self._update_sidebar_user_info()  # Refresh the sidebar labels
 
     def scale_rect(self, x, y, w, h):
         screen_size = AppContext.get_screen_resolution()
         scale_x = screen_size.width() / 1920
         scale_y = screen_size.height() / 1080
         return int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)
-    
+
     def scale_icon(self, w, h):
         screen_size = AppContext.get_screen_resolution()
         scale_x = screen_size.width() / 1920
         scale_y = screen_size.height() / 1080
         return int(w * scale_x), int(h * scale_y)
-    
+
     def scale_style(self, px):
         screen_size = AppContext.get_screen_resolution()
         scale_y = screen_size.height() / 1080
         return int(px * scale_y)
-    
+
     def _setup_main_ui(self):
         self.screen_size = AppContext.get_screen_resolution()
         self.opacity = QGraphicsOpacityEffect()
@@ -263,14 +280,18 @@ class HomeView(QWidget):
         """Set up the UI components for the home page"""
         # Main Content
         self.main_layer = QWidget(self.main_view)
-        self.main_layer.setGeometry(0, 0, self.screen_size.width(), self.screen_size.height())
+        self.main_layer.setGeometry(
+            0, 0, self.screen_size.width(), self.screen_size.height()
+        )
         self.main_layer_layout = QVBoxLayout(self.main_layer)
         self.main_layer_layout.setContentsMargins(0, 0, 0, 0)
 
         background_label = QLabel(self.main_layer)
         background_label.setPixmap(QPixmap("assets/Home/Dashboard.png"))
         background_label.setScaledContents(True)
-        background_label.setGeometry(0, 0, self.screen_size.width(), self.screen_size.height())
+        background_label.setGeometry(
+            0, 0, self.screen_size.width(), self.screen_size.height()
+        )
         background_label.lower()
 
         # Rack Layout
@@ -283,8 +304,12 @@ class HomeView(QWidget):
         self.background_search = QLabel(self.main_layer)
         self.background_search.setPixmap(QPixmap("assets/Home/bg_blur.png"))
         self.background_search.setScaledContents(True)
-        self.background_search.setGeometry(0, 0, self.screen_size.width(), self.screen_size.height())
-        self.background_search.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.background_search.setGeometry(
+            0, 0, self.screen_size.width(), self.screen_size.height()
+        )
+        self.background_search.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
         self.background_search_opacity = QGraphicsOpacityEffect()
         self.background_search_opacity.setOpacity(0.0)
         self.background_search.setGraphicsEffect(self.background_search_opacity)
@@ -308,7 +333,9 @@ class HomeView(QWidget):
         self.top_search = QPushButton(self.main_layer)
         icon_normal = QIcon("assets/Home/top_bar.png")
         self.top_search.setIcon(icon_normal)
-        self.top_search.setIconSize(QSize(*self.scale_icon(814, 19)))  # Ukuran ikon/gambar
+        self.top_search.setIconSize(
+            QSize(*self.scale_icon(814, 19))
+        )  # Ukuran ikon/gambar
         self.top_search.setStyleSheet("""
             QPushButton {
                 border: none;
@@ -327,9 +354,13 @@ class HomeView(QWidget):
 
         # Search input field
         self.search_input = QLineEdit(self.main_layer)
-        self.search_input.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28)))
+        self.search_input.setFont(
+            FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28))
+        )
         self.search_input.setPlaceholderText("Enter search term...")
-        self.search_input.setStyleSheet(f"""color: black; padding-left: {self.scale_style(20)}px; border: none; background: transparent;""")
+        self.search_input.setStyleSheet(
+            f"""color: black; padding-left: {self.scale_style(20)}px; border: none; background: transparent;"""
+        )
         self.search_input.returnPressed.connect(self._perform_search)
         self.search_input.setGeometry(*self.scale_rect(0, -94, 1615, 94))
 
@@ -377,24 +408,28 @@ class HomeView(QWidget):
         search = QIcon("assets/Home/search_icon.png")
         self.search_button.setIcon(search)
         self.search_button.setIconSize(QSize(*self.scale_icon(65, 65)))
-        self.search_button.setStyleSheet(
-            "border: none; background: transparent;"
-        )
+        self.search_button.setStyleSheet("border: none; background: transparent;")
         self.search_button.clicked.connect(self._perform_search)
         self.search_button.setGeometry(*self.scale_rect(1829, -79, 65, 65))
 
         self.background_search2 = QLabel(self.main_layer)
         self.background_search2.setPixmap(QPixmap("assets/Home/bg_blur.png"))
         self.background_search2.setScaledContents(True)
-        self.background_search2.setGeometry(0, 0, self.screen_size.width(), self.screen_size.height())
-        self.background_search2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.background_search2.setGeometry(
+            0, 0, self.screen_size.width(), self.screen_size.height()
+        )
+        self.background_search2.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
         self.background_search2_opacity = QGraphicsOpacityEffect()
         self.background_search2_opacity.setOpacity(0.0)
         self.background_search2.setGraphicsEffect(self.background_search2_opacity)
 
         # Background Blur (search)
         self.bg_blur2 = QPushButton(self.main_layer)
-        self.bg_blur2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.bg_blur2.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
         self.bg_blur2.setStyleSheet("""
             QPushButton {
                 border: none;
@@ -436,7 +471,9 @@ class HomeView(QWidget):
         self.sidebar_widget.setGeometry(*self.scale_rect(2426, 0, 506, 1055))
         sidebar_layout = QVBoxLayout(self.sidebar_widget)
         sidebar_layout.setContentsMargins(0, 20, 0, 20)
-        sidebar_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignCenter)
+        sidebar_layout.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignCenter
+        )
 
         # Base Profile Picture
         profile_container = QWidget(self.sidebar_widget)
@@ -451,26 +488,24 @@ class HomeView(QWidget):
         profile_layout.addWidget(base_profile)
         sidebar_layout.addWidget(profile_container)
 
-        # Base Profile Picture
-        fullname_value = QLabel(self.sidebar_widget)
-        fullname_value.setText(
-            f"{self.current_user.get('first_name', 'N/A') if self.current_user else 'N/A'} {self.current_user.get('last_name', 'N/A') if self.current_user else 'N/A'}"
+        # Fullname Label - now an instance attribute
+        self.fullname_value_label = QLabel(self.sidebar_widget)
+        self.fullname_value_label.setFont(
+            FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(45))
         )
-        fullname_value.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(45)))
-        fullname_value.setFixedHeight(self.scale_style(94))
-        fullname_value.setStyleSheet("color: black; font-weight: bold;")
-        fullname_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        sidebar_layout.addWidget(fullname_value)
+        self.fullname_value_label.setFixedHeight(self.scale_style(94))
+        self.fullname_value_label.setStyleSheet("color: black; font-weight: bold;")
+        self.fullname_value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        sidebar_layout.addWidget(self.fullname_value_label)
 
-        # Base Profile Picture
-        username_value = QLabel(self.sidebar_widget)
-        username_value.setText(
-            self.current_user.get("username") if self.current_user else "N/A"
+        # Username Label - now an instance attribute
+        self.username_value_label = QLabel(self.sidebar_widget)
+        self.username_value_label.setFont(
+            FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(30))
         )
-        username_value.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(30)))
-        username_value.setStyleSheet("color: black;")
-        username_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        sidebar_layout.addWidget(username_value)
+        self.username_value_label.setStyleSheet("color: black;")
+        self.username_value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        sidebar_layout.addWidget(self.username_value_label)
 
         spacer = QLabel("")
         spacer.setFixedHeight(600)
@@ -484,17 +519,22 @@ class HomeView(QWidget):
 
         self.about_button = QPushButton(bottom_container)
         self.about_button.setText("About")
-        self.about_button.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(35)))
+        self.about_button.setFont(
+            FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(35))
+        )
         self.about_button.setStyleSheet(
             "QPushButton { background: transparent; color: black; font-weight: bold; }"
-            "QPushButton:hover { background: transparent; color: grey; font-weight: bold; }")
+            "QPushButton:hover { background: transparent; color: grey; font-weight: bold; }"
+        )
         self.about_button.clicked.connect(self._show_about_dialog)
         bottom_layout.addWidget(self.about_button)
 
         # Logout button
         self.logout_button = QPushButton(bottom_container)
         self.logout_button.setText("Logout")
-        self.logout_button.setFont(FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(65)))
+        self.logout_button.setFont(
+            FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(65))
+        )
         self.logout_button.setStyleSheet(
             "QPushButton { background: transparent; color: red; font-weight: bold; }"
             "QPushButton:hover { background: transparent; color: black; font-weight: bold; }"
@@ -504,12 +544,32 @@ class HomeView(QWidget):
 
         sidebar_layout.addWidget(bottom_container)
 
+    def _update_sidebar_user_info(self):
+        """Updates the sidebar user information labels with current_user data."""
+        if (
+            self.fullname_value_label and self.username_value_label
+        ):  # Check if labels are created
+            if self.current_user:
+                self.fullname_value_label.setText(
+                    f"{self.current_user.get('first_name', 'N/A')} {self.current_user.get('last_name', 'N/A')}"
+                )
+                self.username_value_label.setText(
+                    self.current_user.get("username", "N/A")
+                )
+            else:
+                self.fullname_value_label.setText("N/A N/A")
+                self.username_value_label.setText("N/A")
+
     def _search_appear(self):
         self.top_search.setGeometry(*self.scale_rect(557, 117, 814, 19))
         self.background_search_opacity.setOpacity(1.0)
         self.bg_blur_opacity.setOpacity(1.0)
-        self.background_search.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
-        self.bg_blur.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        self.background_search.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, False
+        )
+        self.bg_blur.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, False
+        )
         self.sidebar_opacity.setOpacity(0.0)
         self.sidebar.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.bg_search_input.setGeometry(*self.scale_rect(0, 0, 1920, 94))
@@ -521,10 +581,14 @@ class HomeView(QWidget):
         self.top_search.setGeometry(*self.scale_rect(557, 17, 814, 19))
         self.background_search_opacity.setOpacity(0.0)
         self.bg_blur_opacity.setOpacity(0.0)
-        self.background_search.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.background_search.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
         self.bg_blur.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.sidebar_opacity.setOpacity(1.0)
-        self.sidebar.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        self.sidebar.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, False
+        )
         self.bg_search_input.setGeometry(*self.scale_rect(0, -94, 1920, 94))
         self.search_input.setGeometry(*self.scale_rect(0, -94, 1615, 94))
         self.search_field.setGeometry(*self.scale_rect(1629, -94, 200, 94))
@@ -537,8 +601,12 @@ class HomeView(QWidget):
         self.sidebar_widget.setGeometry(*self.scale_rect(1414, 0, 506, 1055))
         self.bg_blur2_opacity.setOpacity(1.0)
         self.background_search2_opacity.setOpacity(1.0)
-        self.background_search2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
-        self.bg_blur2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        self.background_search2.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, False
+        )
+        self.bg_blur2.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, False
+        )
 
     def _exit_sidebar(self):
         self.sidebar.setGeometry(*self.scale_rect(1890, 200, 17, 708))
@@ -546,19 +614,29 @@ class HomeView(QWidget):
         self.sidebar_widget.setGeometry(*self.scale_rect(2426, 0, 506, 1055))
         self.bg_blur2_opacity.setOpacity(0.0)
         self.background_search2_opacity.setOpacity(0.0)
-        self.background_search2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.bg_blur2.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-    
+        self.background_search2.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
+        self.bg_blur2.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+        )
+
     def _get_user_profile(self):
-        print("testing satu")
-        if self.home_viewmodel:
-            # Fetch current user data if needed
-            if not self.current_user and self.home_viewmodel.user_model:
-                # You might need to implement this method in home_viewmodel
-                # This would get the current logged-in user's data
-                print("proses mencoba mengambil current user")
-                self.current_user = self.home_viewmodel.get_current_user()
-                print(self.current_user)
+        """
+        Tries to populate self.current_user from the ViewModel.
+        This is mainly for the initial setup of the view.
+        Subsequent updates should come via the set_user_data slot.
+        """
+        # print("HomeView: _get_user_profile called") # For debugging
+        if self.home_viewmodel and not self.current_user:
+            # print("HomeView: current_user is None, attempting to fetch from viewmodel.") # For debugging
+            # This call will trigger load_current_user in VM if data isn't cached,
+            # which then emits user_data_loaded, calling self.set_user_data.
+            # If data is cached, it's returned here directly.
+            user_data_from_vm = self.home_viewmodel.get_current_user()
+            if user_data_from_vm:  # If data was available from VM (cached or loaded synchronously by get_current_user)
+                self.current_user = user_data_from_vm
+            # print(f"HomeView: _get_user_profile - self.current_user is now {self.current_user}") # For debugging
 
     def _show_about_dialog(self):
         """Show the About dialog"""
@@ -654,16 +732,20 @@ class HomeView(QWidget):
     def search_hover_event(self, button):
         def on_enter(event):
             button.setGeometry(*self.scale_rect(557, 17, 814, 19))
+
         def on_leave(event):
             button.setGeometry(*self.scale_rect(557, 117, 814, 19))
+
         button.enterEvent = on_enter
         button.leaveEvent = on_leave
 
     def make_hover_event(self, button, normal_icon, hover_icon):
         def on_enter(event):
             button.setIcon(hover_icon)
+
         def on_leave(event):
             button.setIcon(normal_icon)
+
         button.enterEvent = on_enter
         button.leaveEvent = on_leave
 
@@ -679,7 +761,6 @@ class HomeView(QWidget):
 
         # Create buttons for each storage location
         for i, storage in enumerate(self.storage_data):
-
             storage_name = storage.get("Name", f"Storage {i + 1}")
             storage_id = storage.get("id")
 
@@ -690,7 +771,9 @@ class HomeView(QWidget):
             rack_button.setIcon(rack_image)
             rack_button.setIconSize(QSize(*self.scale_icon(381, 941)))
             rack_button.setFixedSize(*self.scale_icon(381, 941))
-            rack_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            rack_button.setSizePolicy(
+                QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+            )
             rack_button.setStyleSheet("""
                 QPushButton {
                     border: none;
