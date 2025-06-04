@@ -1,4 +1,4 @@
-# views/usage_report_view.py
+# reagenDatabaseGUI/views/usage_report_view.py
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -9,12 +9,16 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QHeaderView,
     QMessageBox,
+    QFileDialog,  # Ensure QFileDialog is imported
 )
 from PyQt6.QtCore import Qt, pyqtSlot, pyqtSignal, QSize
 from PyQt6.QtGui import QPixmap, QIcon
-from viewmodels.usage_report_viewmodel import UsageReportViewModel
+from viewmodels.usage_report_viewmodel import (
+    UsageReportViewModel,
+)  # Ensure this import is correct
 from app_context import AppContext
 from load_font import FontManager
+
 
 class UsageReportView(QWidget):
     # Signals to communicate with parent
@@ -27,20 +31,16 @@ class UsageReportView(QWidget):
     ):
         super().__init__(parent)
 
-        # Create the view model
         self.view_model = UsageReportViewModel(usage_model, identity_model)
-
-        # Store reagent information
         self.reagent_id = reagent_id
         self.reagent_name = reagent_name
+        self.parent_widget = parent
 
-        # Set up the UI for this panel
         self._setup_ui()
 
-        # Connect view model signals
         self.view_model.data_changed.connect(self._refresh_table)
+        self.view_model.export_finished.connect(self._on_export_finished)
 
-        # Load initial data
         self.refresh_data()
 
     def scale_rect(self, x, y, w, h):
@@ -48,35 +48,32 @@ class UsageReportView(QWidget):
         scale_x = screen_size.width() / 1920
         scale_y = screen_size.height() / 1080
         return int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)
-    
+
     def scale_icon(self, w, h):
         screen_size = AppContext.get_screen_resolution()
         scale_x = screen_size.width() / 1920
         scale_y = screen_size.height() / 1080
         return int(w * scale_x), int(h * scale_y)
-    
+
     def scale_style(self, px):
         screen_size = AppContext.get_screen_resolution()
         scale_y = screen_size.height() / 1080
         return int(px * scale_y)
-    
+
     def _setup_ui(self):
         self.screen_size = AppContext.get_screen_resolution()
         self.setGeometry(0, 0, self.screen_size.width(), self.screen_size.height())
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
 
         background_label = QLabel(self)
-        background_label.setPixmap(QPixmap("assets/Report/background.png"))  # Use your actual image path
+        background_label.setPixmap(QPixmap("assets/Report/background.png"))
         background_label.setScaledContents(True)
         background_label.setGeometry(*self.scale_rect(0, 0, 1920, 1080))
 
         report_bg = QLabel(self)
-        report_bg.setPixmap(QPixmap("assets/report/report.png"))  # Use your actual image path
+        report_bg.setPixmap(QPixmap("assets/report/report.png"))
         report_bg.setScaledContents(True)
         report_bg.setGeometry(*self.scale_rect(89, 172, 1742, 830))
 
-        # Table for displaying usage reports
         self.table_widget = QTableWidget(self)
         self.table_widget.setColumnCount(5)
         self.table_widget.setHorizontalHeaderLabels(
@@ -85,89 +82,110 @@ class UsageReportView(QWidget):
         self.table_widget.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
+        self.table_widget.horizontalHeader().setSectionResizeMode(
+            4, QHeaderView.ResizeMode.ResizeToContents
+        )
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.setShowGrid(False)
         self.table_widget.setStyleSheet(f"""
             QTableWidget {{
-                color: black;
-                outline: none;
-                background: transparent;
-                border: none;
+                color: black; outline: none; background: transparent; border: none;
             }}
             QHeaderView{{
-                color: black;
-                background: rgba(0, 0, 0, 35);
-                border: none;
+                color: black; background: rgba(0, 0, 0, 35); border: none;
                 border-top-left-radius: {self.scale_style(25)}px;
                 border-top-right-radius: {self.scale_style(25)}px; 
             }}
             QHeaderView::section {{
-                background: transparent;
-                border: none;
-                font-family: Figtree;
-                font-size: {self.scale_style(40)}px;
-                font-weight: bold;
+                background: transparent; border: none; font-family: Figtree;
+                font-size: {self.scale_style(40)}px; font-weight: bold;
                 padding-right: {self.scale_style(30)}px;
             }}
             QTableWidget::item {{
-                padding-left: {self.scale_style(10)}px;  /* isi menjauh dari header */
-                padding-right: {self.scale_style(10)}px;  /* isi menjauh dari header */
-                border-bottom: 1px solid #ccc;  /* hanya garis bawah antar baris */
+                padding-left: {self.scale_style(10)}px; padding-right: {self.scale_style(10)}px;
+                border-bottom: 1px solid #ccc;
             }}
             QTableWidget::item:selected {{
-                color: white;
-                background-color: rgba(0, 0, 0, 100);
+                color: white; background-color: rgba(0, 0, 0, 100);
             }}
         """)
-        self.table_widget.setGeometry(*self.scale_rect(89, 172, 1742, 830))
-        self.table_widget.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(24)))
+        self.table_widget.setGeometry(*self.scale_rect(89, 172, 1742, 830 - 70))
+        self.table_widget.setFont(
+            FontManager.get_font("Figtree-Regular", self.scale_style(24))
+        )
         self.table_widget.verticalHeader().setDefaultSectionSize(self.scale_style(55))
         self.table_widget.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
         )
 
-        # Add New Usage Report button
         self.anew_report_button = QPushButton(self)
         add_normal = QIcon("assets/Report/add.png")
         add_hover = QIcon("assets/Report/add_hover.png")
         self.anew_report_button.setIcon(add_normal)
         self.anew_report_button.setIconSize(QSize(*self.scale_icon(170, 170)))
-        self.anew_report_button.setStyleSheet("""
-            QPushButton {
-                border: none;
-                background: transparent;
-            }
-        """)
+        self.anew_report_button.setStyleSheet("border: none; background: transparent;")
         self.anew_report_button.setGeometry(*self.scale_rect(1722, 865, 170, 170))
-        self.anew_report_button.enterEvent = lambda event: self.anew_report_button.setIcon(add_hover)
-        self.anew_report_button.leaveEvent = lambda event: self.anew_report_button.setIcon(add_normal)
+        self.make_hover_event(
+            self.anew_report_button,
+            "assets/Report/add.png",
+            "assets/Report/add_hover.png",
+        )
         self.anew_report_button.clicked.connect(self._on_add_new_report)
 
-        # Add circular back button in top-left corner
-        self.back_button = QPushButton(self)
-        back_normal = QIcon("assets/Report/icon_back.png")
-        back_hover = QIcon("assets/Report/back_hover.png")
-        self.back_button.setIcon(back_normal)
-        self.back_button.setIconSize(QSize(*self.scale_icon(130, 130)))
-        self.back_button.setStyleSheet("""
-            QPushButton {
-                border: none;
-                background-color: transparent;
-            }
+        self.export_button = QPushButton("Export to XLSX", self)
+        self.export_button.setFont(
+            FontManager.get_font("Figtree-Regular", self.scale_style(22))
+        )
+        self.export_button.setStyleSheet(f"""
+            QPushButton {{
+                color: black; background-color: #E0E0E0; border: 1px solid #B0B0B0;
+                padding: {self.scale_style(8)}px {self.scale_style(15)}px;
+                border-radius: {self.scale_style(5)}px;
+            }}
+            QPushButton:hover {{ background-color: #D0D0D0; }}
+            QPushButton:pressed {{ background-color: #C0C0C0; }}
         """)
-        # Perubahan penting: Mengganti koneksi dari on_login_success ke _login
+        export_button_y = 172 + (830 - 70) + self.scale_style(10)
+        export_button_height = self.scale_style(50)
+        self.export_button.setGeometry(
+            *self.scale_rect(120, export_button_y, 250, export_button_height)
+        )
+        self.export_button.clicked.connect(self._on_export_report)
+
+        self.back_button = QPushButton(self)
+        self.make_hover_event(
+            self.back_button,
+            "assets/Report/icon_back.png",
+            "assets/Report/back_hover.png",
+        )
+        self.back_button.setIconSize(QSize(*self.scale_icon(130, 130)))
+        self.back_button.setStyleSheet("border: none; background-color: transparent;")
         self.back_button.setGeometry(*self.scale_rect(12, 12, 130, 130))
-        self.back_button.enterEvent = lambda event: self.back_button.setIcon(back_hover)
-        self.back_button.leaveEvent = lambda event: self.back_button.setIcon(back_normal)
         self.back_button.clicked.connect(self._on_back_clicked)
 
-    def make_hover_event(self, button, normal_icon, hover_icon):
-        def on_enter(event):
-            button.setIcon(hover_icon)
-        def on_leave(event):
-            button.setIcon(normal_icon)
-        button.enterEvent = on_enter
-        button.leaveEvent = on_leave
+    def make_hover_event(self, button, normal_icon_path, hover_icon_path):
+        normal_icon = QIcon(normal_icon_path)
+        hover_icon = QIcon(hover_icon_path)
+        if normal_icon.isNull() or hover_icon.isNull():
+            print(
+                f"Warning: Could not load icons for button: {normal_icon_path} or {hover_icon_path}"
+            )
+            # Fallback to text if button has no text yet and icons failed
+            if not button.text():
+                button.setText(
+                    normal_icon_path.split("/")[-1].split(".")[0][:3]
+                )  # e.g. "ico" from "icon_back.png"
+            return
+
+        button.setIcon(normal_icon)
+
+        # Store icons on the button itself to prevent them from being garbage collected
+        # if they are not referenced elsewhere, which can happen with lambdas in some cases.
+        button._normal_icon = normal_icon
+        button._hover_icon = hover_icon
+
+        button.enterEvent = lambda event, b=button: b.setIcon(b._hover_icon)
+        button.leaveEvent = lambda event, b=button: b.setIcon(b._normal_icon)
 
     def _refresh_table(self):
         """Refresh the table with data from view model"""
@@ -184,17 +202,25 @@ class UsageReportView(QWidget):
             self.table_widget.setItem(
                 row, 0, QTableWidgetItem(report["formatted_date"])
             )
-            self.table_widget.item(row, 0).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table_widget.item(row, 0).setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
             self.table_widget.setItem(
                 row, 1, QTableWidgetItem(str(report["amount_used"]))
             )
-            self.table_widget.item(row, 1).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table_widget.item(row, 1).setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
             self.table_widget.setItem(row, 2, QTableWidgetItem(report["user"]))
-            self.table_widget.item(row, 2).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table_widget.item(row, 2).setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
             self.table_widget.setItem(
                 row, 3, QTableWidgetItem(report["supporting_materials"])
             )
-            self.table_widget.item(row, 3).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table_widget.item(row, 3).setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
 
             # Create action buttons (for edit and delete)
             actions_layout = QHBoxLayout()
@@ -241,68 +267,75 @@ class UsageReportView(QWidget):
             # Add the widget to the table cell
             self.table_widget.setCellWidget(row, 4, actions_widget)
 
-        # If no reports, show a message
         if len(usage_reports) == 0:
             self.table_widget.setRowCount(1)
             no_data_item = QTableWidgetItem("No usage reports found for this reagent")
             no_data_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table_widget.setItem(0, 0, no_data_item)
-            self.table_widget.setSpan(0, 0, 1, 5)  # Span across all columns
+            self.table_widget.setSpan(0, 0, 1, 5)
 
     def _on_add_new_report(self):
-        """Handler for add new report button click"""
         self.add_report_clicked.emit(self.reagent_id, self.reagent_name)
 
     def _on_edit_report(self):
-        """Handler for edit report button click"""
         button = self.sender()
         if button:
             report_id = button.property("report_id")
             self.edit_report_clicked.emit(report_id, self.reagent_id, self.reagent_name)
 
     def _on_delete_report(self):
-        """Handler for delete report button click"""
         button = self.sender()
         if button:
             report_id = button.property("report_id")
-
             confirm = QMessageBox.question(
                 self,
                 "Confirm Deletion",
-                "Are you sure you want to delete this usage report?",
+                "Are you sure you want to delete this usage report? This will revert the stock.",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
-
             if confirm == QMessageBox.StandardButton.Yes:
-                try:
-                    success = self.view_model.delete_report(report_id)
-
-                    if success:
-                        QMessageBox.information(
-                            self, "Success", "Usage report deleted successfully"
-                        )
-                        self.refresh_data()  # Refresh the table
-                    else:
-                        QMessageBox.warning(
-                            self, "Error", "Failed to delete usage report"
-                        )
-
-                except Exception as e:
-                    QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
+                if self.view_model.delete_report(report_id, self.reagent_id):
+                    QMessageBox.information(
+                        self,
+                        "Success",
+                        "Usage report deleted and stock updated successfully.",
+                    )
+                else:
+                    QMessageBox.warning(
+                        self, "Error", "Failed to delete usage report or update stock."
+                    )
 
     def _on_back_clicked(self):
-        """Handler for back button click"""
         self.back_clicked.emit()
 
-        # For backward compatibility with the original implementation
-        # In case the signal isn't connected, try the legacy approach
-        # if self.parent_widget and hasattr(self.parent_widget, "show_rack_view"):
-        #     self.parent_widget.show_rack_view()
-
     def refresh_data(self):
-        """Refresh the usage data display"""
         try:
-            self.view_model.load_usage_data(self.reagent_id)
+            if not self.view_model.load_usage_data(self.reagent_id):
+                QMessageBox.warning(
+                    self,
+                    "Data Load Issue",
+                    f"Could not fully load usage data for {self.reagent_name}.",
+                )
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load usage data: {str(e)}")
+
+    def _on_export_report(self):
+        default_filename = f"{self.reagent_name.replace(' ', '_')}_usage_report.xlsx"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Usage Report",
+            default_filename,
+            "Excel Files (*.xlsx);;All Files (*)",
+        )
+        if file_path:
+            self.view_model.export_usage_data_to_xlsx(
+                self.reagent_id, file_path, self.reagent_name
+            )
+
+    @pyqtSlot(bool, str)
+    def _on_export_finished(self, success, message):
+        if success:
+            QMessageBox.information(self, "Export Successful", message)
+        else:
+            QMessageBox.critical(self, "Export Failed", message)
