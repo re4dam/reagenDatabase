@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 
 
 class RackViewModel(QObject):
@@ -54,6 +54,8 @@ class RackViewModel(QObject):
                 f"Attribute {view_key} found on {parent_window.__class__.__name__}. Reusing."
             )
             self.rack_view = getattr(parent_window, view_key)
+            if hasattr(self.rack_view, "mainAnimation"):
+                self.rack_view.mainAnimation()
 
         if self.rack_view is None:
             print(
@@ -156,6 +158,9 @@ class RackViewModel(QObject):
 
         self.rack_view.main_stack.addWidget(detail_panel)
         self.rack_view.main_stack.setCurrentWidget(detail_panel)
+        # Panggil animasi masuk untuk ReagentDetailPanel
+        if hasattr(detail_panel, "mainAnimation"):
+            detail_panel.mainAnimation()
         return True
 
     def add_new_reagent(self):
@@ -186,6 +191,10 @@ class RackViewModel(QObject):
             parent=self.rack_view,
             came_from_search=False,  # New reagent is not from search context in this method
         )
+
+        if hasattr(detail_panel, "reset"):
+            detail_panel.reset()
+
         self.rack_view.main_stack.addWidget(detail_panel)
         self.rack_view.main_stack.setCurrentWidget(detail_panel)
         return True

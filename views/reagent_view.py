@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QStyledItemDelegate,
 )
-from PyQt6.QtCore import Qt, QDate, pyqtSignal, QSize, QRectF
+from PyQt6.QtCore import Qt, QDate, pyqtSignal, QSize, QRectF, QPropertyAnimation, QSequentialAnimationGroup, QParallelAnimationGroup, QEasingCurve, QPoint
 from PyQt6.QtGui import QPixmap, QImage, QIcon, QPainter, QPainterPath
 
 from load_font import FontManager
@@ -75,6 +75,26 @@ class ReagentDetailPanel(QWidget):
         screen_size = AppContext.get_screen_resolution()
         scale_y = screen_size.height() / 1080
         return int(px * scale_y)
+    
+    # def mainAnimation(self):
+    #     start_panel_main_x, start_panel_main_y, _, _ = self.scale_rect(0, 1080, 0, 0) # Target Y=0 (atas)
+    #     target_panel_main_x, target_panel_main_y, _, _ = self.scale_rect(0, 0, 0, 0) # Target Y=0 (atas)
+
+    #     # Hentikan animasi sebelumnya jika ada
+    #     if hasattr(self, 'panel_main_animation_obj') and self.panel_main_animation_obj and \
+    #        self.panel_main_animation_obj.state() == QPropertyAnimation.State.Running:
+    #         self.panel_main_animation_obj.stop()
+
+    #     self.panel_main_animation_obj = QPropertyAnimation(self.panel_main, b"pos", self) # Simpan referensi
+    #     self.panel_main_animation_obj.setDuration(750)
+    #     self.panel_main_animation_obj.setStartValue(QPoint(start_panel_main_x, start_panel_main_y)) # Tidak perlu jika sudah di posisi awal
+    #     self.panel_main_animation_obj.setEndValue(QPoint(target_panel_main_x, target_panel_main_y))
+    #     self.panel_main_animation_obj.setEasingCurve(QEasingCurve.Type.OutBack)
+    #     self.panel_main_animation_obj.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+    
+    def reset(self):
+        screen_size = AppContext.get_screen_resolution()
+        self.panel_main.setGeometry(0, 0, screen_size.width(), screen_size.height())
 
     def _setup_ui(self):
         screen_size = AppContext.get_screen_resolution()
@@ -94,44 +114,26 @@ class ReagentDetailPanel(QWidget):
         )  # Use your actual image path
         background_label.setScaledContents(True)
         background_label.setGeometry(0, 0, screen_size.width(), screen_size.height())
-
-        # Add circular back button in top-left corner
-        self.back_button = QPushButton(container)
-        back_normal = QIcon("assets/Rack/icon_back.png")
-        back_hover = QIcon("assets/Rack/back_hover.png")
-        self.back_button.setIcon(back_normal)
-        self.back_button.setIconSize(QSize(*self.scale_icon(130, 130)))
-        self.back_button.setStyleSheet("""
-            QPushButton {
-                border: none;
-                background-color: transparent;
-            }
-        """)
-        # Perubahan penting: Mengganti koneksi dari on_login_success ke _login
-        self.back_button.setGeometry(*self.scale_rect(12, 12, 130, 130))
-        self.back_button.enterEvent = lambda event: self.back_button.setIcon(back_hover)
-        self.back_button.leaveEvent = lambda event: self.back_button.setIcon(
-            back_normal
-        )
-        self.back_button.clicked.connect(self._go_back)
-        self.back_button.raise_()
+        
+        self.panel_main = QWidget(container)
+        self.panel_main.setGeometry(0, 0, screen_size.width(), screen_size.height())
 
         # Foreground layer
-        panel_label = QLabel(container)
+        panel_label = QLabel(self.panel_main)
         panel_label.setPixmap(QPixmap("assets/ReagenView/foreground.png"))
         panel_label.setScaledContents(True)
         panel_label.setGeometry(*self.scale_rect(87, 160, 1742, 861))
         panel_label.raise_()
 
         # Label layer
-        label_layer = QLabel(container)
+        label_layer = QLabel(self.panel_main)
         label_layer.setPixmap(QPixmap("assets/ReagenView/Label.png"))
         label_layer.setScaledContents(True)
         label_layer.setGeometry(*self.scale_rect(125, 200, 1072, 537))
         label_layer.raise_()
 
         # Name field
-        self.name_edit = QLineEdit(container)
+        self.name_edit = QLineEdit(self.panel_main)
         self.name_edit.setFont(
             FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28))
         )
@@ -139,7 +141,7 @@ class ReagentDetailPanel(QWidget):
         self.name_edit.raise_()
 
         # Tanggal_Pembelian field
-        self.purchase_date_edit = QDateEdit(container)
+        self.purchase_date_edit = QDateEdit(self.panel_main)
         self.purchase_date_edit.setCalendarPopup(True)
         self.purchase_date_edit.setDate(QDate.currentDate())  # Default today
         calendar = self.purchase_date_edit.calendarWidget()
@@ -189,7 +191,7 @@ class ReagentDetailPanel(QWidget):
         self.purchase_date_edit.raise_()
 
         # Stock field
-        self.stock_spin = QSpinBox(container)
+        self.stock_spin = QSpinBox(self.panel_main)
         self.stock_spin.setRange(0, 10000)
         self.stock_spin.setFont(
             FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28))
@@ -198,7 +200,7 @@ class ReagentDetailPanel(QWidget):
         self.stock_spin.raise_()
 
         # Massa field
-        self.massa_spin = QSpinBox(container)
+        self.massa_spin = QSpinBox(self.panel_main)
         self.massa_spin.setRange(0, 100000)
         self.massa_spin.setFont(
             FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28))
@@ -207,7 +209,7 @@ class ReagentDetailPanel(QWidget):
         self.massa_spin.raise_()
 
         # Category_Hazard field
-        self.hazard_combo = QComboBox(container)
+        self.hazard_combo = QComboBox(self.panel_main)
         self.hazard_combo.addItems(["None", "Low", "Medium", "High", "Extreme"])
         self.hazard_combo.setFont(
             FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28))
@@ -216,7 +218,7 @@ class ReagentDetailPanel(QWidget):
         self.hazard_combo.raise_()
 
         # Wujud (form/state) field
-        self.wujud_combo = QComboBox(container)
+        self.wujud_combo = QComboBox(self.panel_main)
         self.wujud_combo.addItems(["Solid", "Liquid", "Gas", "Solution"])
         self.wujud_combo.setFont(
             FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28))
@@ -226,7 +228,7 @@ class ReagentDetailPanel(QWidget):
         self.wujud_combo.raise_()
 
         # Sifat field
-        self.sifat_edit = QTextEdit(container)
+        self.sifat_edit = QTextEdit(self.panel_main)
         self.sifat_edit.setMaximumHeight(100)
         self.sifat_edit.setFont(
             FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(28))
@@ -235,7 +237,7 @@ class ReagentDetailPanel(QWidget):
         self.sifat_edit.raise_()
 
         # Storage ID field - will be set based on the rack_name
-        self.storage_id_label = QLabel(container)
+        self.storage_id_label = QLabel(self.panel_main)
         self.storage_id_label.setText(f"{self.view_model.rack_name}")
         tipe = self.view_model.rack_name
         if tipe == 1:
@@ -255,7 +257,7 @@ class ReagentDetailPanel(QWidget):
         self.storage_id_label.raise_()
 
         # Tanggal_Expire field
-        self.expire_date_edit = QDateEdit(container)
+        self.expire_date_edit = QDateEdit(self.panel_main)
         self.expire_date_edit.setCalendarPopup(True)
         self.expire_date_edit.setDate(
             QDate.currentDate().addYears(1)
@@ -308,7 +310,7 @@ class ReagentDetailPanel(QWidget):
         self.expire_date_edit.raise_()
 
         # SDS field
-        self.sds_status_label = QLabel(container)
+        self.sds_status_label = QLabel(self.panel_main)
         self.sds_status_label.setText("No SDS file")
         self.sds_status_label.setFont(
             FontManager.get_font("PlusJakartaSans-Italic", self.scale_style(20))
@@ -318,7 +320,7 @@ class ReagentDetailPanel(QWidget):
         self.sds_status_label.setGeometry(*self.scale_rect(670, 725, 506, 60))
         self.sds_status_label.raise_()
 
-        self.view_sds_button = QPushButton(container)
+        self.view_sds_button = QPushButton(self.panel_main)
         self.view_sds_button.setText("View")
         self.view_sds_button.setFont(
             FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(16))
@@ -329,7 +331,7 @@ class ReagentDetailPanel(QWidget):
 
         # SDS Upload/Clear buttons
 
-        self.upload_sds_button = QPushButton(container)
+        self.upload_sds_button = QPushButton(self.panel_main)
         self.upload_sds_button.setText("Upload SDS")
         self.upload_sds_button.setFont(
             FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(16))
@@ -338,7 +340,7 @@ class ReagentDetailPanel(QWidget):
         self.upload_sds_button.clicked.connect(self._upload_sds)
         self.upload_sds_button.raise_()
 
-        self.clear_sds_button = QPushButton(container)
+        self.clear_sds_button = QPushButton(self.panel_main)
         self.clear_sds_button.setText("Clear SDS")
         self.clear_sds_button.setFont(
             FontManager.get_font("PlusJakartaSans-Regular", self.scale_style(16))
@@ -348,7 +350,7 @@ class ReagentDetailPanel(QWidget):
         self.clear_sds_button.raise_()
 
         # Image display (now bigger)
-        self.image_label = QLabel(container)
+        self.image_label = QLabel(self.panel_main)
         self.image_label.setMinimumSize(250, 250)  # Larger size for the image
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setStyleSheet(
@@ -358,20 +360,20 @@ class ReagentDetailPanel(QWidget):
         self.image_label.setGeometry(*self.scale_rect(1202, 204, 586, 586))
         self.image_label.raise_()
 
-        self.upload_image_button = QPushButton(container)
+        self.upload_image_button = QPushButton(self.panel_main)
         self.upload_image_button.setText("Upload Image")
         self.upload_image_button.clicked.connect(self._upload_image)
         self.upload_image_button.setGeometry(*self.scale_rect(1202, 800, 293, 50))
         self.upload_image_button.raise_()
 
-        self.clear_image_button = QPushButton(container)
+        self.clear_image_button = QPushButton(self.panel_main)
         self.clear_image_button.setText("Clear Image")
         self.clear_image_button.clicked.connect(self._clear_image)
         self.clear_image_button.setGeometry(*self.scale_rect(1495, 800, 293, 50))
         self.clear_image_button.raise_()
 
         # Description field
-        # self.description_edit = QTextEdit(container)
+        # self.description_edit = QTextEdit(self.panel_main)
         # self.description_edit.setMaximumHeight(100)
         # self.description_edit.setFont(FontManager.get_font("PlusJakartaSans-Regular", 28))
         # self.description_edit.setGeometry(*self.scale_rect(670, 510, 506, 60))
@@ -392,7 +394,7 @@ class ReagentDetailPanel(QWidget):
 
         # Edit button (only for existing reagents)
         if not self.view_model.is_new:
-            self.edit_button = QPushButton(container)
+            self.edit_button = QPushButton(self.panel_main)
             icon_normal = QIcon("assets/ReagenView/icon_edit.png")
             icon_hover = QIcon("assets/ReagenView/edit_hover.png")
             self.edit_button.setIcon(icon_normal)
@@ -414,7 +416,7 @@ class ReagentDetailPanel(QWidget):
             self.edit_button.raise_()
 
         # Save button
-        self.save_button = QPushButton(container)
+        self.save_button = QPushButton(self.panel_main)
         save_normal = QIcon("assets/ReagenView/icon_save.png")
         save_hover = QIcon("assets/ReagenView/save_hover.png")
         self.save_button.setIcon(save_normal)
@@ -435,7 +437,7 @@ class ReagentDetailPanel(QWidget):
 
         # Delete button (only for existing reagents)
         if not self.view_model.is_new:
-            self.delete_button = QPushButton(container)
+            self.delete_button = QPushButton(self.panel_main)
             delete_normal = QIcon("assets/ReagenView/icon_delete.png")
             delete_hover = QIcon("assets/ReagenView/delete_hover.png")
             self.delete_button.setIcon(delete_normal)
@@ -458,7 +460,7 @@ class ReagentDetailPanel(QWidget):
 
         # Usage Reports button (only for existing reagents)
         if not self.view_model.is_new:
-            self.usage_button = QPushButton(container)
+            self.usage_button = QPushButton(self.panel_main)
             usage_normal = QIcon("assets/ReagenView/icon_usage.png")
             usage_hover = QIcon("assets/ReagenView/icon_usage_hover.png")
             self.usage_button.setIcon(usage_normal)
@@ -481,7 +483,7 @@ class ReagentDetailPanel(QWidget):
 
         # Cancel button (only visible in edit mode)
         if not self.view_model.is_new:
-            self.cancel_button = QPushButton(container)
+            self.cancel_button = QPushButton(self.panel_main)
             cancel_normal = QIcon("assets/ReagenView/icon_cancel.png")
             cancel_hover = QIcon("assets/ReagenView/cancel_hover.png")
             self.cancel_button.setIcon(cancel_normal)
@@ -501,6 +503,26 @@ class ReagentDetailPanel(QWidget):
             )
             self.cancel_button.clicked.connect(self._cancel_edit)
             self.cancel_button.raise_()
+        
+        self.back_button = QPushButton(container)
+        back_normal = QIcon("assets/Rack/icon_back.png")
+        back_hover = QIcon("assets/Rack/back_hover.png")
+        self.back_button.setIcon(back_normal)
+        self.back_button.setIconSize(QSize(*self.scale_icon(130, 130)))
+        self.back_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+            }
+        """)
+        # Perubahan penting: Mengganti koneksi dari on_login_success ke _login
+        self.back_button.setGeometry(*self.scale_rect(12, 12, 130, 130))
+        self.back_button.enterEvent = lambda event: self.back_button.setIcon(back_hover)
+        self.back_button.leaveEvent = lambda event: self.back_button.setIcon(
+            back_normal
+        )
+        self.back_button.clicked.connect(self._go_back)
+        self.back_button.raise_()
 
         main_layout.addWidget(container)
 
@@ -1130,6 +1152,8 @@ class ReagentDetailPanel(QWidget):
             # self.back_to_rack_view.emit() # This signal might not be connected/used based on current code
             if self.parent_widget and hasattr(self.parent_widget, "show_rack_view"):
                 self.parent_widget.show_rack_view()
+                if hasattr(self.parent_widget, "mainAnimation"):
+                    self.parent_widget.mainAnimation()
 
     def resizeEvent(self, event):
         """Handle resize events to scale the image properly"""

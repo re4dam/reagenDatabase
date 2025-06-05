@@ -69,6 +69,10 @@ class HomeViewModel(QObject):
 
         # Switch to home widget
         parent_window.stacked_widget.setCurrentWidget(parent_window.home_widget)
+        if hasattr(parent_window.stacked_widget.widget(1), "rack_animation"):
+                parent_window.stacked_widget.widget(1).rack_animation()
+        elif hasattr(parent_window.stacked_widget.widget(2), "rack_animation"):
+                parent_window.stacked_widget.widget(2).rack_animation()
         return True
 
     def set_current_user_id(self, user_id):

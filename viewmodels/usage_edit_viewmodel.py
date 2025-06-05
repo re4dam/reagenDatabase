@@ -1,7 +1,6 @@
 # reagenDatabaseGUI/viewmodels/usage_edit_viewmodel.py
 from PyQt6.QtCore import QObject, pyqtSignal, QDate
 
-
 class UsageEditViewModel(QObject):
     usage_loaded = pyqtSignal(dict, bool, int, list)
     error = pyqtSignal(str)
@@ -209,6 +208,11 @@ class UsageEditViewModel(QObject):
     def cancel(self):
         if self.usage_edit_view and self.usage_edit_view.parent_window:
             parent = self.usage_edit_view.parent_window
+            if hasattr(parent.stacked_widget.widget(2), "TransitionAnimation"):
+                parent.stacked_widget.widget(2).TransitionAnimation()
+            elif hasattr(parent.stacked_widget.widget(4), "TransitionAnimation"):
+                parent.stacked_widget.widget(4).TransitionAnimation()
+                
             # No need to refresh here as nothing changed
             if hasattr(parent, "show_usage_reports"):
                 parent.show_usage_reports(self.reagent_id, self.reagent_name)

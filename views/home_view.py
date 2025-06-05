@@ -19,106 +19,6 @@ from PyQt6.QtGui import QPixmap, QIcon, QFont
 from app_context import AppContext
 from load_font import FontManager
 
-# class UserProfileDialog(QDialog):
-#     """Dialog to display user profile information"""
-
-#     def __init__(self, parent=None, user_data=None):
-#         super().__init__(parent)
-#         self.setWindowTitle("User Profile")
-#         self.setFixedSize(400, 350)
-#         self.setModal(True)
-
-#         # Remove the ? from the title bar
-#         self.setWindowFlags(
-#             self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
-#         )
-
-#         # Main layout
-#         layout = QVBoxLayout(self)
-#         layout.setSpacing(15)
-#         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-#         # Background styling for the dialog
-#         self.setStyleSheet("QDialog { background-color: #f0f0f0; }")
-
-#         # Title
-#         title_label = QLabel("USER PROFILE")
-#         title_font = QFont()
-#         title_font.setPointSize(18)
-#         title_font.setBold(True)
-#         title_label.setFont(title_font)
-#         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-#         layout.addWidget(title_label)
-
-#         layout.addSpacing(20)
-
-#         # Container for user data
-#         user_data_layout = QVBoxLayout()
-#         user_data_layout.setSpacing(10)
-#         user_data_layout.setContentsMargins(20, 0, 20, 0)
-
-#         # Create a frame to hold the user data
-#         user_data_frame = QFrame()
-#         user_data_frame.setFrameShape(QFrame.Shape.StyledPanel)
-#         user_data_frame.setStyleSheet(
-#             "QFrame { background-color: #ffffff; border-radius: 8px; padding: 10px; border: 1px solid #dddddd; }"
-#         )
-#         user_data_frame.setLayout(user_data_layout)
-
-#         # Username (if user_data is provided)
-#         username_layout = QHBoxLayout()
-#         username_label = QLabel("Username:")
-#         username_label.setFont(QFont("", 12, QFont.Weight.Bold))
-#         username_value = QLabel(
-#             user_data.get("username", "N/A") if user_data else "N/A"
-#         )
-#         username_value.setFont(QFont("", 12))
-#         username_layout.addWidget(username_label)
-#         username_layout.addWidget(username_value, 1)
-#         user_data_layout.addLayout(username_layout)
-
-#         # Add a divider line
-#         divider1 = QFrame()
-#         divider1.setFrameShape(QFrame.Shape.HLine)
-#         divider1.setFrameShadow(QFrame.Shadow.Sunken)
-#         divider1.setStyleSheet("background-color: #dddddd;")
-#         user_data_layout.addWidget(divider1)
-
-#         # First Name
-#         first_name_layout = QHBoxLayout()
-#         first_name_label = QLabel("First Name:")
-#         first_name_label.setFont(QFont("", 12, QFont.Weight.Bold))
-#         first_name_value = QLabel(
-#             user_data.get("first_name", "N/A") if user_data else "N/A"
-#         )
-#         first_name_value.setFont(QFont("", 12))
-#         first_name_layout.addWidget(first_name_label)
-#         first_name_layout.addWidget(first_name_value, 1)
-#         user_data_layout.addLayout(first_name_layout)
-
-#         # Add a divider line
-#         divider2 = QFrame()
-#         divider2.setFrameShape(QFrame.Shape.HLine)
-#         divider2.setFrameShadow(QFrame.Shadow.Sunken)
-#         divider2.setStyleSheet("background-color: #dddddd;")
-#         user_data_layout.addWidget(divider2)
-
-#         # Last Name
-#         last_name_layout = QHBoxLayout()
-#         last_name_label = QLabel("Last Name:")
-#         last_name_label.setFont(QFont("", 12, QFont.Weight.Bold))
-#         last_name_value = QLabel(
-#             user_data.get("last_name", "N/A") if user_data else "N/A"
-#         )
-#         last_name_value.setFont(QFont("", 12))
-#         last_name_layout.addWidget(last_name_label)
-#         last_name_layout.addWidget(last_name_value, 1)
-#         user_data_layout.addLayout(last_name_layout)
-
-#         layout.addWidget(user_data_frame)
-
-#         layout.addSpacing(20)
-
 #         # Close button
 #         close_button = QPushButton("Close")
 #         close_button.setFixedWidth(100)
@@ -868,6 +768,8 @@ class HomeView(QWidget):
         )
 
         if reply == QMessageBox.StandardButton.Yes and self.home_viewmodel:
+            self.rack_main_opacity_effect.setOpacity(0.0)
+            self._exit_sidebar()
             self.home_viewmodel.logout()
 
     @pyqtSlot(list)
@@ -942,8 +844,6 @@ class HomeView(QWidget):
             self.rack_layout.addWidget(rack_button)
             self.rack_buttons.append(rack_button)
 
-        self.rack_animation()
-
         # If no storage found, show a message
         if not self.storage_data:
             no_storage_label = QLabel(
@@ -963,8 +863,8 @@ class HomeView(QWidget):
         
         # Offset untuk seberapa jauh tombol "mulai" di bawah posisi akhirnya di dalam rack_main
         # Bisa berdasarkan tinggi rack_main atau nilai tetap yang cukup besar
-        button_y_offset = self.rack_main.height() // 2 # Contoh: mulai dari setengah tinggi rack_main di bawahnya
-        if button_y_offset < 100: button_y_offset = 300 # Fallback
+        button_y_offset = self.rack_main.height() // 2
+        # if button_y_offset < 100: button_y_offset = 300 # Fallback
 
         # 1. Animasi untuk setiap tombol rak (bergerak naik di dalam rack_main)
         for i, button in enumerate(self.rack_buttons):

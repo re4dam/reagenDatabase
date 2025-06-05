@@ -10,8 +10,9 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QMessageBox,
     QFileDialog,  # Ensure QFileDialog is imported
+    QGraphicsOpacityEffect
 )
-from PyQt6.QtCore import Qt, pyqtSlot, pyqtSignal, QSize
+from PyQt6.QtCore import Qt, pyqtSlot, pyqtSignal, QSize, QPropertyAnimation, QSequentialAnimationGroup, QParallelAnimationGroup, QEasingCurve, QPoint
 from PyQt6.QtGui import QPixmap, QIcon
 from viewmodels.usage_report_viewmodel import (
     UsageReportViewModel,
@@ -59,6 +60,50 @@ class UsageReportView(QWidget):
         screen_size = AppContext.get_screen_resolution()
         scale_y = screen_size.height() / 1080
         return int(px * scale_y)
+    
+    def mainAnimation(self):
+        start_panel_main_x, start_panel_main_y, _, _ = self.scale_rect(0, 1080, 0, 0) # Target Y=0 (atas)
+        target_panel_main_x, target_panel_main_y, _, _ = self.scale_rect(0, 0, 0, 0) # Target Y=0 (atas)
+
+        self.sequence = QParallelAnimationGroup(self)
+
+        self.panel_main_animation_obj = QPropertyAnimation(self.panel_main, b"pos") # Simpan referensi
+        self.panel_main_animation_obj.setDuration(750)
+        self.panel_main_animation_obj.setStartValue(QPoint(start_panel_main_x, start_panel_main_y)) # Tidak perlu jika sudah di posisi awal
+        self.panel_main_animation_obj.setEndValue(QPoint(target_panel_main_x, target_panel_main_y))
+        self.panel_main_animation_obj.setEasingCurve(QEasingCurve.Type.OutBack)
+        self.sequence.addAnimation(self.panel_main_animation_obj)
+
+        export_button_animation = QPropertyAnimation(self.export_button_effect, b"opacity")
+        export_button_animation.setDuration(750)
+        export_button_animation.setStartValue(0.0)
+        export_button_animation.setEndValue(1.0)
+        export_button_animation.setEasingCurve(QEasingCurve.Type.InQuad)
+        self.sequence.addAnimation(export_button_animation)
+
+        self.sequence.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+    
+    def TransitionAnimation(self):
+        start_panel_main_x, start_panel_main_y, _, _ = self.scale_rect(-1920, 0, 0, 0) # Target Y=0 (atas)
+        target_panel_main_x, target_panel_main_y, _, _ = self.scale_rect(0, 0, 0, 0) # Target Y=0 (atas)
+
+        self.sequence = QParallelAnimationGroup(self)
+
+        self.panel_main_animation_obj = QPropertyAnimation(self.panel_main, b"pos") # Simpan referensi
+        self.panel_main_animation_obj.setDuration(750)
+        self.panel_main_animation_obj.setStartValue(QPoint(start_panel_main_x, start_panel_main_y)) # Tidak perlu jika sudah di posisi awal
+        self.panel_main_animation_obj.setEndValue(QPoint(target_panel_main_x, target_panel_main_y))
+        self.panel_main_animation_obj.setEasingCurve(QEasingCurve.Type.InOutBack)
+        self.sequence.addAnimation(self.panel_main_animation_obj)
+
+        export_button_animation = QPropertyAnimation(self.export_button_effect, b"opacity")
+        export_button_animation.setDuration(750)
+        export_button_animation.setStartValue(0.0)
+        export_button_animation.setEndValue(1.0)
+        export_button_animation.setEasingCurve(QEasingCurve.Type.InQuad)
+        self.sequence.addAnimation(export_button_animation)
+
+        self.sequence.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
 
     def _setup_ui(self):
         self.screen_size = AppContext.get_screen_resolution()
@@ -69,21 +114,26 @@ class UsageReportView(QWidget):
         background_label.setScaledContents(True)
         background_label.setGeometry(*self.scale_rect(0, 0, 1920, 1080))
 
-        report_bg = QLabel(self)
+        self.panel_main = QWidget(self)
+        self.panel_main.setGeometry(0, 1080, self.screen_size.width() * 2, self.screen_size.height())
+
+        report_bg = QLabel(self.panel_main)
         report_bg.setPixmap(QPixmap("assets/report/report.png"))
         report_bg.setScaledContents(True)
         report_bg.setGeometry(*self.scale_rect(89, 172, 1742, 830))
 
-        self.table_widget = QTableWidget(self)
+        report_bg2 = QLabel(self.panel_main)
+        report_bg2.setPixmap(QPixmap("assets/Report/report_edit.png"))
+        report_bg2.setScaledContents(True)
+        report_bg2.setGeometry(*self.scale_rect(2009, 172, 1742, 830))
+
+        self.table_widget = QTableWidget(self.panel_main)
         self.table_widget.setColumnCount(5)
         self.table_widget.setHorizontalHeaderLabels(
             ["Date Used", "Amount Used", "User", "Supporting\nMaterials", "Actions"]
         )
         self.table_widget.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
-        )
-        self.table_widget.horizontalHeader().setSectionResizeMode(
-            4, QHeaderView.ResizeMode.ResizeToContents
         )
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.setShowGrid(False)
@@ -118,10 +168,7 @@ class UsageReportView(QWidget):
             QTableWidget.SelectionBehavior.SelectRows
         )
 
-        self.anew_report_button = QPushButton(self)
-        add_normal = QIcon("assets/Report/add.png")
-        add_hover = QIcon("assets/Report/add_hover.png")
-        self.anew_report_button.setIcon(add_normal)
+        self.anew_report_button = QPushButton(self.panel_main)
         self.anew_report_button.setIconSize(QSize(*self.scale_icon(170, 170)))
         self.anew_report_button.setStyleSheet("border: none; background: transparent;")
         self.anew_report_button.setGeometry(*self.scale_rect(1722, 865, 170, 170))
@@ -132,25 +179,19 @@ class UsageReportView(QWidget):
         )
         self.anew_report_button.clicked.connect(self._on_add_new_report)
 
-        self.export_button = QPushButton("Export to XLSX", self)
-        self.export_button.setFont(
-            FontManager.get_font("Figtree-Regular", self.scale_style(22))
-        )
-        self.export_button.setStyleSheet(f"""
-            QPushButton {{
-                color: black; background-color: #E0E0E0; border: 1px solid #B0B0B0;
-                padding: {self.scale_style(8)}px {self.scale_style(15)}px;
-                border-radius: {self.scale_style(5)}px;
-            }}
-            QPushButton:hover {{ background-color: #D0D0D0; }}
-            QPushButton:pressed {{ background-color: #C0C0C0; }}
-        """)
-        export_button_y = 172 + (830 - 70) + self.scale_style(10)
-        export_button_height = self.scale_style(50)
-        self.export_button.setGeometry(
-            *self.scale_rect(120, export_button_y, 250, export_button_height)
+        self.export_button = QPushButton(self)
+        self.export_button.setIconSize(QSize(*self.scale_icon(80, 80)))
+        self.export_button.setStyleSheet("border: none; background: transparent;")
+        self.export_button.setGeometry(*self.scale_rect(1800, 35, 80, 80))
+        self.make_hover_event(
+            self.export_button,
+            "assets/Report/icon_normal.png",
+            "assets/Report/icon_hover.png",
         )
         self.export_button.clicked.connect(self._on_export_report)
+        self.export_button_effect = QGraphicsOpacityEffect(self.export_button)
+        self.export_button.setGraphicsEffect(self.export_button_effect)
+        self.export_button_effect.setOpacity(0.0)
 
         self.back_button = QPushButton(self)
         self.make_hover_event(

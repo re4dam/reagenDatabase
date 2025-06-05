@@ -10,8 +10,9 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QStackedLayout,
     QGraphicsDropShadowEffect,
+    QGraphicsOpacityEffect
 )
-from PyQt6.QtCore import Qt, pyqtSlot, QSize
+from PyQt6.QtCore import Qt, pyqtSlot, QSize, QPropertyAnimation, QSequentialAnimationGroup, QParallelAnimationGroup, QEasingCurve, QPoint, QTimer
 from PyQt6.QtGui import QPixmap, QFont, QIcon, QRegion, QPainterPath, QColor
 from views.reagent_view import ReagentDetailPanel
 from app_context import AppContext
@@ -27,17 +28,21 @@ class RackView(QWidget):
         self.current_page = 0
         self.items_per_page = 10
         self.storage_id = storage_id
+        self.is_page_sliding = False
+        self.current_slide_out_animation = None
+        self.current_slide_in_animation = None
 
         self._current_detail_panel_came_from_search = (
             False  # Store context for ReagentDetailPanel
         )
-        self._active_usage_report_view = (
+        self.active_usage_report_view = (
             None  # To manage the active UsageReportView instance
         )
 
         # Create stacked layout
         self.main_stack = QStackedLayout()
         self._setup_rack_ui()
+        self.mainAnimation()
 
         # Set main layout
         main_layout = QVBoxLayout(self)
@@ -64,6 +69,36 @@ class RackView(QWidget):
         screen_size = AppContext.get_screen_resolution()
         scale_y = screen_size.height() / 1080
         return int(px * scale_y)
+    
+    def mainAnimation(self):
+        self.sequence = QParallelAnimationGroup(self)
+
+        start_foreground_x, start_foreground_y, _, _, = self.scale_rect(89, 1220, 1742, 861)
+        target_foreground_x, target_foreground_y, _, _, = self.scale_rect(89, 140, 1742, 861)
+        foreground_animation = QPropertyAnimation(self.foreground, b"pos")
+        foreground_animation.setDuration(750)
+        foreground_animation.setStartValue(QPoint(start_foreground_x, start_foreground_y))
+        foreground_animation.setEndValue(QPoint(target_foreground_x, target_foreground_y))
+        foreground_animation.setEasingCurve(QEasingCurve.Type.OutBack)
+        self.sequence.addAnimation(foreground_animation)
+
+        scroll_content_effect_animation = QPropertyAnimation(self.scroll_content_effect, b"opacity")
+        scroll_content_effect_animation.setDuration(500)
+        scroll_content_effect_animation.setStartValue(0.0)
+        scroll_content_effect_animation.setEndValue(1.0)
+        scroll_content_effect_animation.setEasingCurve(QEasingCurve.Type.InQuad)
+        self.sequence.addAnimation(scroll_content_effect_animation)
+
+        start_add_reagen_button_x, start_add_reagen_button_y, _, _, = self.scale_rect(1722, 1945, 174, 174)
+        target_add_reagen_button_x, target_add_reagen_button_y, _, _, = self.scale_rect(1722, 865, 174, 174)
+        add_reagen_button_animation = QPropertyAnimation(self.add_reagent_button, b"pos")
+        add_reagen_button_animation.setDuration(750)
+        add_reagen_button_animation.setStartValue(QPoint(start_add_reagen_button_x, start_add_reagen_button_y))
+        add_reagen_button_animation.setEndValue(QPoint(target_add_reagen_button_x, target_add_reagen_button_y))
+        add_reagen_button_animation.setEasingCurve(QEasingCurve.Type.OutBack)
+        self.sequence.addAnimation(add_reagen_button_animation)
+
+        self.sequence.start()
 
     def _setup_rack_ui(self):
         """Set up the UI components for the rack view"""
@@ -112,24 +147,27 @@ class RackView(QWidget):
         title_label.raise_()
 
         # Foreground
-        foreground = QLabel(container)
-        foreground.setPixmap(
+        self.foreground = QLabel(container)
+        self.foreground.setPixmap(
             QPixmap("assets/Rack/foreground.png")
         )  # Use your actual image path
-        foreground.setScaledContents(True)
-        foreground.setGeometry(*self.scale_rect(89, 140, 1742, 861))
-        foreground.raise_()
+        self.foreground.setScaledContents(True)
+        self.foreground.setGeometry(*self.scale_rect(89, 140, 1742, 861))
+        self.foreground.raise_()
 
         # Scrollable grid
-        scroll_area = QScrollArea(container)
+        self.scroll_area = QScrollArea(container)
         self.scroll_content = QWidget()
+        self.scroll_content_effect = QGraphicsOpacityEffect(self.scroll_content)
+        self.scroll_content.setGraphicsEffect(self.scroll_content_effect)
+        self.scroll_content_effect.setOpacity(0.0)
         self.grid_layout = QGridLayout(self.scroll_content)
-        self.grid_layout.setSpacing(10)
-        scroll_area.setWidget(self.scroll_content)
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setGeometry(*self.scale_rect(89, 140, 1742, 861))
-        scroll_area.setStyleSheet("border: none; background: transparent;")
-        scroll_area.raise_()
+        self.grid_layout.setSpacing(15)
+        self.scroll_area.setWidget(self.scroll_content)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setGeometry(*self.scale_rect(99, 140, 1722, 861))
+        self.scroll_area.setStyleSheet("border: none; background: transparent;")
+        self.scroll_area.raise_()
 
         self.add_reagent_button = QPushButton(container)
         add_normal = QIcon("assets/Rack/add.png")
@@ -220,6 +258,181 @@ class RackView(QWidget):
         self.rack_title.setText(f"{rack_name}")
         self.current_page = 0
         self._load_current_page()
+    
+    def _disable_navigation_during_slide(self):
+        print("DEBUG: _disable_navigation_during_slide called")
+        self.prev_button.setEnabled(False)
+        self.next_button.setEnabled(False)
+        if hasattr(self, 'add_reagent_button'):
+            self.add_reagent_button.setEnabled(False)
+        
+        # Nonaktifkan juga tombol reagen di grid
+        for i in range(self.grid_layout.count()):
+            widget_item = self.grid_layout.itemAt(i)
+            if widget_item:
+                widget = widget_item.widget()
+                if widget:
+                    widget.setEnabled(False)
+
+    def _finish_page_slide(self):
+        print("DEBUG: _finish_page_slide called")
+        self.is_page_sliding = False # Reset flag SEGERA
+        self._update_navigation_buttons() # Ini akan mengaktifkan prev/next sesuai kondisi
+        if hasattr(self, 'add_reagent_button'):
+            self.add_reagent_button.setEnabled(True)
+        
+        # Aktifkan kembali tombol reagen di grid
+        for i in range(self.grid_layout.count()):
+            widget_item = self.grid_layout.itemAt(i)
+            if widget_item:
+                widget = widget_item.widget()
+                if widget:
+                    widget.setEnabled(True)
+        print("DEBUG: Navigation and reagent buttons state updated.")
+
+    def _go_to_next_page(self):
+        print(f"DEBUG: _go_to_next_page called. Current page: {self.current_page}, is_sliding: {self.is_page_sliding}, total_pages: {self._total_pages()}")
+        if self.is_page_sliding or not (self.current_page < self._total_pages() - 1):
+            print("DEBUG: Next page navigation aborted (sliding or at end).")
+            return
+
+        self.is_page_sliding = True
+        self._disable_navigation_during_slide()
+
+        scroll_width = self.scroll_area.width()
+        print(f"DEBUG: Scroll area width for next page slide: {scroll_width}")
+        if scroll_width <= 0:
+            print("ERROR: Scroll area width is zero or negative! Aborting animation for next page.")
+            self._finish_page_slide() # Coba pulihkan state UI
+            return
+
+        # Animasi geser keluar ke kiri
+        slide_out_anim = QPropertyAnimation(self.scroll_content, b"pos", self) # Tambahkan self sebagai parent
+        slide_out_anim.setDuration(750)
+        slide_out_anim.setStartValue(self.scroll_content.pos()) # Ambil posisi saat ini (seharusnya 0,0)
+        slide_out_anim.setEndValue(QPoint(-scroll_width, 0))
+        slide_out_anim.setEasingCurve(QEasingCurve.Type.InOutBack)
+
+        slide_out_anim.finished.connect(self._prepare_next_page_for_slide_in)
+        print("DEBUG: Starting slide_out_anim for next page.")
+        slide_out_anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped) # Hapus saat berhenti
+
+    def _prepare_next_page_for_slide_in(self):
+        print(f"DEBUG: [PREPARE_NEXT] Halaman saat ini sebelum increment: {self.current_page}")
+        self.current_page += 1
+        
+        scroll_width = self.scroll_area.width()
+
+        # 1. Pindahkan dulu ke posisi awal slide-in (kanan luar layar) SAAT MASIH INVISIBLE
+        #    Ini penting agar saat _load_current_page, widget sudah di posisi yang benar
+        #    jika ada kalkulasi layout internal yang bergantung pada posisi parent.
+        self.scroll_content.move(scroll_width, self.scroll_content.pos().y())
+        print(f"DEBUG: [PREPARE_NEXT] scroll_content dipindah ke {self.scroll_content.pos()} (sebelum load, masih invisible)")
+        
+        # 2. Sembunyikan scroll_content SEBELUM memuat item baru jika belum disembunyikan
+        #    Ini untuk mencegah item-item baru tergambar prematur.
+        self.scroll_content.setVisible(False)
+        
+        try:
+            print("DEBUG: [PREPARE_NEXT] Memuat item halaman baru...")
+            self._load_current_page() # Update konten dan label halaman
+            print(f"DEBUG: [PREPARE_NEXT] Halaman {self.current_page + 1} dimuat. Label halaman: {self.page_label.text()}")
+        except Exception as e:
+            print(f"ERROR saat _load_current_page di _prepare_next_page_for_slide_in: {e}")
+            # Pulihkan keadaan jika error
+            self.scroll_content.move(0, self.scroll_content.pos().y()) 
+            self.scroll_content.setVisible(True) 
+            self._finish_page_slide() 
+            return
+            
+        # 3. Setelah konten dimuat dan widget masih di posisi kanan luar layar,
+        #    BARU buat dia visible.
+        self.scroll_content.setVisible(True)
+        print("DEBUG: [PREPARE_NEXT] scroll_content visible kembali di posisi slide-in (kanan luar layar).")
+
+        # 4. Mulai animasi slide-in
+        self.current_slide_in_animation = QPropertyAnimation(self.scroll_content, b"pos", self)
+        self.current_slide_in_animation.setDuration(400) # Durasi slide-in yang sudah disesuaikan
+        self.current_slide_in_animation.setStartValue(self.scroll_content.pos()) 
+        self.current_slide_in_animation.setEndValue(QPoint(0, self.scroll_content.pos().y())) 
+        self.current_slide_in_animation.setEasingCurve(QEasingCurve.Type.OutBack)
+
+        try: self.current_slide_in_animation.finished.disconnect()
+        except TypeError: pass
+        self.current_slide_in_animation.finished.connect(self._finish_page_slide)
+        
+        print("DEBUG: [PREPARE_NEXT] Memulai animasi geser masuk...")
+        self.current_slide_in_animation.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+
+    def _go_to_previous_page(self):
+        print(f"DEBUG: _go_to_previous_page called. Current page: {self.current_page}, is_sliding: {self.is_page_sliding}")
+        if self.is_page_sliding or not (self.current_page > 0):
+            print("DEBUG: Previous page navigation aborted (sliding or at start).")
+            return
+
+        self.is_page_sliding = True
+        self._disable_navigation_during_slide()
+
+        scroll_width = self.scroll_area.width()
+        print(f"DEBUG: Scroll area width for previous page slide: {scroll_width}")
+        if scroll_width <= 0:
+            print("ERROR: Scroll area width is zero or negative! Aborting animation for previous page.")
+            self._finish_page_slide() # Coba pulihkan state UI
+            return
+
+        # Animasi geser keluar ke kanan
+        slide_out_anim = QPropertyAnimation(self.scroll_content, b"pos", self) # Tambahkan self sebagai parent
+        slide_out_anim.setDuration(750)
+        slide_out_anim.setStartValue(self.scroll_content.pos()) # Ambil posisi saat ini
+        slide_out_anim.setEndValue(QPoint(scroll_width, 0))
+        slide_out_anim.setEasingCurve(QEasingCurve.Type.InOutBack)
+
+        slide_out_anim.finished.connect(self._prepare_prev_page_for_slide_in)
+        print("DEBUG: Starting slide_out_anim for previous page.")
+        slide_out_anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+
+    def _prepare_prev_page_for_slide_in(self):
+        print(f"DEBUG: [PREPARE_PREV] Halaman saat ini sebelum decrement: {self.current_page}")
+        self.current_page -= 1
+
+        scroll_width = self.scroll_area.width()
+
+        # 1. Pindahkan dulu ke posisi awal slide-in (kiri luar layar) SAAT MASIH INVISIBLE
+        self.scroll_content.move(-scroll_width, self.scroll_content.pos().y())
+        print(f"DEBUG: [PREPARE_PREV] scroll_content dipindah ke {self.scroll_content.pos()} (sebelum load, masih invisible)")
+
+        # 2. Sembunyikan scroll_content SEBELUM memuat item baru
+        self.scroll_content.setVisible(False)
+
+        try:
+            print("DEBUG: [PREPARE_PREV] Memuat item halaman baru...")
+            self._load_current_page()
+            print(f"DEBUG: [PREPARE_PREV] Halaman {self.current_page + 1} dimuat. Label halaman: {self.page_label.text()}")
+        except Exception as e:
+            print(f"ERROR saat _load_current_page di _prepare_prev_page_for_slide_in: {e}")
+            self.scroll_content.move(0, self.scroll_content.pos().y())
+            self.scroll_content.setVisible(True)
+            self._finish_page_slide()
+            return
+            
+        # 3. Setelah konten dimuat dan widget masih di posisi kiri luar layar,
+        #    BARU buat dia visible.
+        self.scroll_content.setVisible(True)
+        print("DEBUG: [PREPARE_PREV] scroll_content visible kembali di posisi slide-in (kiri luar layar).")
+
+        # 4. Mulai animasi slide-in
+        self.current_slide_in_animation = QPropertyAnimation(self.scroll_content, b"pos", self)
+        self.current_slide_in_animation.setDuration(400) # Durasi slide-in yang sudah disesuaikan
+        self.current_slide_in_animation.setStartValue(self.scroll_content.pos()) 
+        self.current_slide_in_animation.setEndValue(QPoint(0, self.scroll_content.pos().y()))
+        self.current_slide_in_animation.setEasingCurve(QEasingCurve.Type.OutBack)
+
+        try: self.current_slide_in_animation.finished.disconnect()
+        except TypeError: pass
+        self.current_slide_in_animation.finished.connect(self._finish_page_slide)
+        
+        print("DEBUG: [PREPARE_PREV] Memulai animasi geser masuk...")
+        self.current_slide_in_animation.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
 
     def _load_current_page(self):
         """Load current page of reagents"""
@@ -266,16 +479,6 @@ class RackView(QWidget):
         return max(
             1, (len(self.reagents) + self.items_per_page - 1) // self.items_per_page
         )
-
-    def _go_to_previous_page(self):
-        if self.current_page > 0:
-            self.current_page -= 1
-            self._load_current_page()
-
-    def _go_to_next_page(self):
-        if self.current_page < self._total_pages() - 1:
-            self.current_page += 1
-            self._load_current_page()
 
     def _update_navigation_buttons(self):
         self.prev_button.setEnabled(self.current_page > 0)
@@ -357,43 +560,57 @@ class RackView(QWidget):
                     return
 
                 from views.usage_report_view import UsageReportView  # Import here
-
                 main_stack_owner = self.parent_window  # This is LoginView or HomeView
 
                 # Clean up any previously active usage report view shown by this RackView instance
-                if self._active_usage_report_view is not None:
+                if self.active_usage_report_view is not None:
+                    print(self.active_usage_report_view)
                     if hasattr(main_stack_owner, "stacked_widget"):
                         main_stack_owner.stacked_widget.removeWidget(
-                            self._active_usage_report_view
+                            self.active_usage_report_view
                         )
-                    self._active_usage_report_view.deleteLater()
-                    self._active_usage_report_view = None
+                    self.active_usage_report_view.deleteLater()
+                    self.active_usage_report_view = None
 
                 # Create the new usage report view
                 # The parent of UsageReportView is 'self' (RackView)
-                self._active_usage_report_view = UsageReportView(
+                self.active_usage_report_view = UsageReportView(
                     usage_model, identity_model, reagent_id, reagent_name, parent=self
                 )
 
                 # Connect signals for the new UsageReportView instance
-                self._active_usage_report_view.back_clicked.connect(
-                    lambda r_id=reagent_id: self._return_to_reagent_detail(r_id)
+                self.active_usage_report_view.back_clicked.connect(
+                    lambda r_id=reagent_id: self._return_to_reagent_detail(r_id),
                 )
-                self._active_usage_report_view.add_report_clicked.connect(
+                self.active_usage_report_view.add_report_clicked.connect(
                     self.show_new_usage_report
                 )
-                self._active_usage_report_view.edit_report_clicked.connect(
+                self.active_usage_report_view.edit_report_clicked.connect(
                     self.show_edit_usage_report
                 )
 
                 # Add and show the UsageReportView on the main application stack
                 if hasattr(main_stack_owner, "stacked_widget"):
                     main_stack_owner.stacked_widget.addWidget(
-                        self._active_usage_report_view
+                        self.active_usage_report_view
                     )
                     main_stack_owner.stacked_widget.setCurrentWidget(
-                        self._active_usage_report_view
+                        self.active_usage_report_view
                     )
+                    # ---- PEMANGGILAN ANIMASI MASUK untuk UsageReportView ----
+                    if hasattr(self.active_usage_report_view, "mainAnimation"):
+                        print("DEBUG: RackView - Scheduling mainAnimation for UsageReportView")
+                        
+                        def trigger_report_animation():
+                            if self.active_usage_report_view and \
+                            self.active_usage_report_view.isVisible() and \
+                            main_stack_owner.stacked_widget.currentWidget() == self.active_usage_report_view:
+                                print("DEBUG: Triggering mainAnimation for visible UsageReportView")
+                                self.active_usage_report_view.mainAnimation()
+                            else:
+                                print("DEBUG: UsageReportView tidak valid/visible/current saat timer, animasi tidak dijalankan.")
+
+                        QTimer.singleShot(50, trigger_report_animation)
                 else:
                     QMessageBox.critical(
                         self,
@@ -423,13 +640,13 @@ class RackView(QWidget):
         main_stack_owner = self.parent_window  # LoginView or HomeView
 
         # Clean up the active UsageReportView from the main stack
-        if self._active_usage_report_view is not None:
+        if self.active_usage_report_view is not None:
             if hasattr(main_stack_owner, "stacked_widget"):
                 main_stack_owner.stacked_widget.removeWidget(
-                    self._active_usage_report_view
+                    self.active_usage_report_view
                 )
-            self._active_usage_report_view.deleteLater()
-            self._active_usage_report_view = None
+            self.active_usage_report_view.deleteLater()
+            self.active_usage_report_view = None
 
         # Ensure RackView (self) is the current widget on its parent's stack
         if hasattr(main_stack_owner, "stacked_widget"):

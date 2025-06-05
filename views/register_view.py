@@ -55,18 +55,20 @@ class RegisterView(QWidget):
         self.bg_animation.setEndValue(1.0)
         self.bg_animation.setEasingCurve(QEasingCurve.Type.InExpo)
 
+        start_prevpanel_x, start_prevpanel_y, _, _ = self.scale_rect(54, 22, 1812, 1012)
+        target_prevpanel_x, target_prevpanel_y, _, _ = self.scale_rect(-1866, 22, 1812, 1012)
         self.prevpanel_animation = QPropertyAnimation(self.prevpanel_label, b"pos")
         self.prevpanel_animation.setDuration(1500)
-        prevpanel_current_pos = self.prevpanel_label.pos()
-        self.prevpanel_animation.setStartValue(prevpanel_current_pos)
-        self.prevpanel_animation.setEndValue(QPoint(prevpanel_current_pos.x() - 1920, prevpanel_current_pos.y()))
+        self.prevpanel_animation.setStartValue(QPoint(start_prevpanel_x, start_prevpanel_y))
+        self.prevpanel_animation.setEndValue(QPoint(target_prevpanel_x, target_prevpanel_y))
         self.prevpanel_animation.setEasingCurve(QEasingCurve.Type.InOutBack)
 
+        start_panel_x, start_panel_y, _, _ = self.scale_rect(1974, 22, 1812, 1012)
+        target_panel_x, target_panel_y, _, _ = self.scale_rect(54, 22, 1812, 1012)
         self.panel_animation = QPropertyAnimation(self.panel_main, b"pos")
         self.panel_animation.setDuration(1500)
-        panel_current_pos = self.panel_main.pos()
-        self.panel_animation.setStartValue(panel_current_pos)
-        self.panel_animation.setEndValue(QPoint(panel_current_pos.x() - 1920, panel_current_pos.y()))
+        self.panel_animation.setStartValue(QPoint(start_panel_x, start_panel_y))
+        self.panel_animation.setEndValue(QPoint(target_panel_x, target_panel_y))
         self.panel_animation.setEasingCurve(QEasingCurve.Type.InOutBack)
 
         self.sequence.addAnimation(self.prevpanel_animation)
@@ -144,6 +146,7 @@ class RegisterView(QWidget):
                 border: 1px solid #ccc;
                 border-radius: {self.scale_style(35)}px;
                 padding-left: {self.scale_style(24)}px;
+                padding-right: {self.scale_style(24)}px;
                 padding-bottom: {self.scale_style(3)}px;
                 font-size: {self.scale_style(32)}px;
                 background-color: white;
@@ -168,6 +171,7 @@ class RegisterView(QWidget):
                 border: 1px solid #ccc;
                 border-radius: {self.scale_style(35)}px;
                 padding-left: {self.scale_style(24)}px;
+                padding-right: {self.scale_style(24)}px;
                 padding-bottom: {self.scale_style(3)}px;
                 font-size: {self.scale_style(32)}px;
                 background-color: white;
@@ -192,6 +196,7 @@ class RegisterView(QWidget):
                 border: 1px solid #ccc;
                 border-radius: {self.scale_style(35)}px;
                 padding-left: {self.scale_style(24)}px;
+                padding-right: {self.scale_style(24)}px;
                 padding-bottom: {self.scale_style(3)}px;
                 font-size: {self.scale_style(32)}px;
                 background-color: white;
@@ -217,6 +222,7 @@ class RegisterView(QWidget):
                 border: 1px solid #ccc;
                 border-radius: {self.scale_style(35)}px;
                 padding-left: {self.scale_style(24)}px;
+                padding-right: {self.scale_style(65)}px;
                 padding-bottom: {self.scale_style(3)}px;
                 font-size: {self.scale_style(32)}px;
                 background-color: white;

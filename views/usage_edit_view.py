@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSlot, QDate, QSize, QRect
+from PyQt6.QtCore import Qt, pyqtSlot, QDate, QSize, QRect, QPropertyAnimation, QSequentialAnimationGroup, QParallelAnimationGroup, QEasingCurve, QPoint
 from PyQt6.QtGui import QFont, QPixmap, QIcon
 from app_context import AppContext
 from load_font import FontManager
@@ -23,8 +23,10 @@ class UsageEditView(QWidget):
         super().__init__(parent)
         self.parent_window = parent
         self.usage_edit_viewmodel = None
-
+        self.sequence = None # Akan diinisialisasi di mainAnimation
+        
         self._setup_ui()
+        self.mainAnimation()
 
     def set_viewmodel(self, viewmodel):
         """Set the ViewModel for this view"""
@@ -46,6 +48,42 @@ class UsageEditView(QWidget):
         screen_size = AppContext.get_screen_resolution()
         scale_y = screen_size.height() / 1080
         return int(px * scale_y)
+    
+    def mainAnimation(self):
+
+        start_panel_main_x, start_panel_main_y, _, _ = self.scale_rect(2009, 172, 1742, 830) # Target Y=0 (atas)
+        target_panel_main_x, target_panel_main_y, _, _ = self.scale_rect(89, 172, 1742, 830) # Target Y=0 (atas)
+        target_report_view_x, target_report_view_y, _, _ = self.scale_rect(-1831, 172, 1742, 830) # Target Y=0 (atas)
+
+        # Hentikan animasi sebelumnya jika ada
+        if hasattr(self, 'sequence') and self.sequence and \
+           self.sequence.state() == QPropertyAnimation.State.Running:
+            self.sequence.stop()
+
+        self.sequence = QParallelAnimationGroup(self)
+
+        self.panel_main_animation_obj = QPropertyAnimation(self.report_bg, b"pos", self) # Simpan referensi
+        self.panel_main_animation_obj.setDuration(750)
+        self.panel_main_animation_obj.setStartValue(QPoint(start_panel_main_x, start_panel_main_y)) # Tidak perlu jika sudah di posisi awal
+        self.panel_main_animation_obj.setEndValue(QPoint(target_panel_main_x, target_panel_main_y))
+        self.panel_main_animation_obj.setEasingCurve(QEasingCurve.Type.InOutBack)
+        self.sequence.addAnimation(self.panel_main_animation_obj)
+
+        self.panel_main_animation_obj2 = QPropertyAnimation(self.form_widget, b"pos", self) # Simpan referensi
+        self.panel_main_animation_obj2.setDuration(750)
+        self.panel_main_animation_obj2.setStartValue(QPoint(start_panel_main_x, start_panel_main_y)) # Tidak perlu jika sudah di posisi awal
+        self.panel_main_animation_obj2.setEndValue(QPoint(target_panel_main_x, target_panel_main_y))
+        self.panel_main_animation_obj2.setEasingCurve(QEasingCurve.Type.InOutBack)
+        self.sequence.addAnimation(self.panel_main_animation_obj2)
+
+        self.report_view_animation = QPropertyAnimation(self.report_view_bg, b"pos", self) # Simpan referensi
+        self.report_view_animation.setDuration(750)
+        self.report_view_animation.setStartValue(QPoint(target_panel_main_x, target_panel_main_y))# Tidak perlu jika sudah di posisi awal
+        self.report_view_animation.setEndValue(QPoint(target_report_view_x, target_report_view_y))
+        self.report_view_animation.setEasingCurve(QEasingCurve.Type.InOutBack)
+        self.sequence.addAnimation(self.report_view_animation)
+
+        self.sequence.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
 
     def _setup_ui(self):
         self.screen_size = AppContext.get_screen_resolution()
@@ -58,19 +96,24 @@ class UsageEditView(QWidget):
         background_label.setScaledContents(True)
         background_label.setGeometry(*self.scale_rect(0, 0, 1920, 1080))
 
-        report_bg = QLabel(self)
-        report_bg.setPixmap(QPixmap("assets/report/report.png"))  # Use your actual image path
-        report_bg.setScaledContents(True)
-        report_bg.setGeometry(*self.scale_rect(89, 172, 1742, 830))
+        self.report_bg = QLabel(self)
+        self.report_bg.setPixmap(QPixmap("assets/Report/report.png"))  # Use your actual image path
+        self.report_bg.setScaledContents(True)
+        self.report_bg.setGeometry(*self.scale_rect(2009, 172, 1742, 830))
+
+        self.report_view_bg = QLabel(self)
+        self.report_view_bg.setPixmap(QPixmap("assets/Report/report_view.png"))  # Use your actual image path
+        self.report_view_bg.setScaledContents(True)
+        self.report_view_bg.setGeometry(*self.scale_rect(89, 172, 1742, 830))
 
         # Form layout
-        form_widget = QWidget(self)
-        form_widget.setGeometry(*self.scale_rect(89, 172, 1742, 830))
-        form_layout = QVBoxLayout(form_widget)
+        self.form_widget = QWidget(self)
+        self.form_widget.setGeometry(*self.scale_rect(2009, 172, 1742, 830))
+        form_layout = QVBoxLayout(self.form_widget)
         form_layout.setContentsMargins(20, 10, 20, 10)
 
         # Label Date
-        date_used_label = QLabel(form_widget)
+        date_used_label = QLabel(self.form_widget)
         date_used_label.setText("Date Used:")
         date_used_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(30)))
         date_used_label.setFixedHeight(50)
@@ -78,7 +121,7 @@ class UsageEditView(QWidget):
         form_layout.addWidget(date_used_label)
 
         # Field Date
-        self.date_used_edit = QDateEdit(form_widget)
+        self.date_used_edit = QDateEdit(self.form_widget)
         self.date_used_edit.setCalendarPopup(True)
         self.date_used_edit.setStyleSheet("""
             QDateEdit {
@@ -144,7 +187,7 @@ class UsageEditView(QWidget):
         form_layout.addWidget(spacer)
 
         # Label Amount
-        amount_used_label = QLabel(form_widget)
+        amount_used_label = QLabel(self.form_widget)
         amount_used_label.setText("Amount Used:")
         amount_used_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(30)))
         amount_used_label.setFixedHeight(50)
@@ -152,7 +195,7 @@ class UsageEditView(QWidget):
         form_layout.addWidget(amount_used_label)
 
         # Field Amount
-        self.amount_used_spin = QSpinBox(form_widget)
+        self.amount_used_spin = QSpinBox(self.form_widget)
         self.amount_used_spin.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(26)))
         self.amount_used_spin.setRange(1, 10000)
         self.amount_used_spin.setStyleSheet("border: none; background: rgba(0, 0, 0, 25); color: #000000")
@@ -162,7 +205,7 @@ class UsageEditView(QWidget):
         form_layout.addWidget(spacer)
 
         # Label User
-        user_label = QLabel(form_widget)
+        user_label = QLabel(self.form_widget)
         user_label.setText("User: ")
         user_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(30)))
         user_label.setFixedHeight(50)
@@ -170,7 +213,7 @@ class UsageEditView(QWidget):
         form_layout.addWidget(user_label)
 
         # User field
-        self.user_edit = QLineEdit(form_widget)
+        self.user_edit = QLineEdit(self.form_widget)
         self.user_edit.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(26)))
         self.user_edit.setStyleSheet("border: none; background: rgba(0, 0, 0, 25); color: #000000")
         form_layout.addWidget(self.user_edit)
@@ -179,7 +222,7 @@ class UsageEditView(QWidget):
         form_layout.addWidget(spacer)
 
         # Label Supporting Materials
-        supporting_materials_label = QLabel(form_widget)
+        supporting_materials_label = QLabel(self.form_widget)
         supporting_materials_label.setText("Supporting Materials: ")
         supporting_materials_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(30)))
         supporting_materials_label.setFixedHeight(50)
@@ -187,7 +230,7 @@ class UsageEditView(QWidget):
         form_layout.addWidget(supporting_materials_label)
 
         # Supporting materials field
-        self.supporting_materials_edit = QTextEdit(form_widget)
+        self.supporting_materials_edit = QTextEdit(self.form_widget)
         self.supporting_materials_edit.setMaximumHeight(250)
         self.supporting_materials_edit.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(20)))
         self.supporting_materials_edit.setStyleSheet("border: none; background: rgba(0, 0, 0, 25); color: #000000")
@@ -197,13 +240,13 @@ class UsageEditView(QWidget):
         form_layout.addWidget(spacer)
 
         # Current stock information
-        self.current_stock_label = QLabel(form_widget)
+        self.current_stock_label = QLabel(self.form_widget)
         self.current_stock_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(24)))
         self.current_stock_label.setStyleSheet("font-weight: bold;")
         form_layout.addWidget(self.current_stock_label)
 
         # Warning label for stock
-        self.stock_warning_label = QLabel(form_widget)
+        self.stock_warning_label = QLabel(self.form_widget)
         self.stock_warning_label.setFont(FontManager.get_font("Figtree-Regular", self.scale_style(24)))
         self.stock_warning_label.setStyleSheet("color: red; font-weight: bold;")
         self.stock_warning_label.setVisible(False)
@@ -260,7 +303,7 @@ class UsageEditView(QWidget):
         self.user_edit.setText(usage_data.get("User", ""))
         self.supporting_materials_edit.setText(usage_data.get("Bahan_Pendukung", ""))
 
-        self.current_stock_label.setText(f"Current Stock: {current_stock}")
+        # self.current_stock_label.setText(f"Current Stock: {current_stock}")
         self._check_stock_level()
 
     @pyqtSlot(str)
